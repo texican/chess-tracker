@@ -1,0 +1,8 @@
+# Google Clasp files (local development only)
+.clasp.json
+
+# macOS system files
+.DS_Store
+
+# Local configuration
+CLAUDE.local.md

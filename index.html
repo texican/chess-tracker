@@ -1,0 +1,1229 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Chess Game Tracker</title>
+    <meta name="description" content="Track your chess games and analyze your performance over time" />
+    <meta name="keywords" content="chess tracker, chess games, rating tracking, chess analytics" />
+
+    <!-- Styles -->
+    <style>
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+/* Form Container */
+.form-container {
+  max-width: 700px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  padding: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Typography */
+h1 {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 10px;
+  font-size: 2.2em;
+  font-weight: 600;
+}
+
+.subtitle {
+  text-align: center;
+  color: #666;
+  margin-bottom: 30px;
+  font-size: 1.1em;
+}
+
+/* Form Elements */
+.form-group {
+  margin-bottom: 25px;
+  position: relative;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1.1em;
+}
+
+input[type='text'],
+input[type='number'],
+textarea,
+select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+/* Custom File Input Styling */
+input[type='file'] {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 12px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+  background: white;
+  cursor: pointer;
+}
+
+input[type='file']:hover {
+  border-color: #4a90e2;
+  transform: translateY(-1px);
+}
+
+input[type='file']:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+}
+
+/* Style the file input button */
+input[type='file']::file-selector-button {
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-right: 12px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+input[type='file']::file-selector-button:hover {
+  background: linear-gradient(135deg, #357abd 0%, #2c5aa0 100%);
+  transform: translateY(-1px);
+}
+
+input[type='text']:focus,
+input[type='number']:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: #4a90e2;
+  box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1);
+  transform: translateY(-1px);
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* Time Limit Container */
+.time-limit-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.time-limit-container select {
+  width: auto;
+  min-width: 80px;
+  flex: 1;
+}
+
+.time-separator {
+  font-weight: bold;
+  font-size: 18px;
+  color: #2c3e50;
+}
+
+
+/* Two Column Layout */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+/* Result Radio Buttons */
+.result-group {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.result-option {
+  display: flex;
+  align-items: center;
+  padding: 12px 20px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  border: 2px solid transparent;
+  flex: 1;
+  min-width: 100px;
+  justify-content: center;
+}
+
+.result-option:hover {
+  background: #e9ecef;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.result-option input[type='radio'] {
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  cursor: pointer;
+  accent-color: #4a90e2;
+}
+
+.result-option span {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+}
+
+.result-option:has(input:checked) {
+  background: rgba(74, 144, 226, 0.1);
+  border-color: #4a90e2;
+}
+
+.result-option.win:has(input:checked) {
+  background: rgba(34, 139, 34, 0.1);
+  border-color: #228B22;
+}
+
+.result-option.loss:has(input:checked) {
+  background: rgba(220, 20, 60, 0.1);
+  border-color: #DC143C;
+}
+
+.result-option.draw:has(input:checked) {
+  background: rgba(255, 165, 0, 0.1);
+  border-color: #FFA500;
+}
+
+/* Help Text Bubble */
+.help-text {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.8em;
+  white-space: nowrap;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.help-text::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: rgba(0, 0, 0, 0.9);
+}
+
+.help-text.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+.help-text.error {
+  background: #e74c3c;
+}
+
+.help-text.error::after {
+  border-top-color: #e74c3c;
+}
+
+.form-group:hover .help-text:not(.error) {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(-5px);
+}
+
+/* Slider Styles */
+.slider-container {
+  position: relative;
+  margin: 20px 0;
+}
+
+.slider-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-size: 0.9em;
+  color: #666;
+}
+
+.slider-labels .gentle {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.slider-labels .brutal {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+input[type='range'] {
+  width: 100%;
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(to right, #f39c12 0%, #e67e22 25%, #e74c3c 50%, #c0392b 75%, #8b0000 100%);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #4a90e2;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+input[type='range']::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #4a90e2;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.slider-value {
+  text-align: center;
+  margin-top: 10px;
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1.1em;
+}
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #4a90e2 0%, #357abd 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.2em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+  box-shadow: 0 10px 25px rgba(74, 144, 226, 0.3);
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 15px 35px rgba(74, 144, 226, 0.4);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  body {
+    padding: 0;
+    min-height: 100vh;
+  }
+
+  .form-container {
+    margin: 0;
+    padding: 20px;
+    border-radius: 0;
+    min-height: 100vh;
+    box-shadow: none;
+    border: none;
+  }
+
+  h1 {
+    font-size: 1.8em;
+  }
+
+  .form-row {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .result-group {
+    flex-direction: column;
+  }
+
+  .result-option {
+    min-width: auto;
+  }
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  }
+  
+  .form-container {
+    background: rgba(40, 44, 52, 0.95) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  }
+  
+  h1, label {
+    color: #f0f0f0 !important;
+  }
+  
+  .subtitle {
+    color: #cccccc !important;
+  }
+  
+  input[type='text'],
+  input[type='number'],
+  input[type='file'],
+  textarea,
+  select {
+    background: #1a1a1a !important;
+    border: 2px solid #333333 !important;
+    color: #f0f0f0 !important;
+  }
+  
+  input[type='text']:focus,
+  input[type='number']:focus,
+  input[type='file']:focus,
+  textarea:focus,
+  select:focus {
+    border-color: #e74c3c !important;
+    background: #0f0f0f !important;
+  }
+  
+  .result-option {
+    background: #1a1a1a !important;
+    border: 2px solid #333333 !important;
+  }
+  
+  .result-option:hover {
+    background: #0f0f0f !important;
+  }
+  
+  .result-option span {
+    color: #f0f0f0 !important;
+  }
+  
+  select option {
+    background: #1a1a1a;
+    color: #f0f0f0;
+  }
+  
+  .help-text {
+    background: rgba(255, 255, 255, 0.9);
+    color: black;
+  }
+  
+  .help-text.error {
+    background: #e53e3e;
+    color: white;
+  }
+}
+
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .form-container {
+    background: rgba(40, 44, 52, 0.98) !important;
+    border: none !important;
+  }
+}
+    </style>
+
+    <!-- Favicon -->
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>♟️</text></svg>"
+    />
+  </head>
+  <body>
+    <div class="form-container">
+      <h1>♟️ Chess Game Tracker</h1>
+
+      <form onsubmit="return handleSubmit(event);" action="javascript:void(0)">
+        <!-- Players Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="whitePlayer">♟ White Player</label>
+            <select
+              id="whitePlayer"
+              name="whitePlayer"
+              required
+              aria-describedby="white-help"
+              onchange="toggleOtherPlayer('white', this.value); checkDuplicatePlayers();"
+            >
+              <option value="">Select white player...</option>
+              <option value="Carlos">Carlos</option>
+              <option value="Carey">Carey</option>
+              <option value="Jorge">Jorge</option>
+              <option value="Other">Other</option>
+            </select>
+            <small id="white-help" class="help-text">Required field. Who played white?</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="blackPlayer">♟️ Black Player</label>
+            <select
+              id="blackPlayer"
+              name="blackPlayer"
+              required
+              aria-describedby="black-help"
+              onchange="toggleOtherPlayer('black', this.value); checkDuplicatePlayers();"
+            >
+              <option value="">Select black player...</option>
+              <option value="Carlos">Carlos</option>
+              <option value="Carey">Carey</option>
+              <option value="Jorge">Jorge</option>
+              <option value="Other">Other</option>
+            </select>
+            <small id="black-help" class="help-text">Required field. Who played black?</small>
+          </div>
+        </div>
+
+        <!-- Other Player Fields (initially hidden) -->
+        <div class="form-row" id="otherPlayersRow" style="display: none;">
+          <div class="form-group" id="otherWhiteGroup" style="display: none;">
+            <label for="otherWhitePlayer">♟ Other White Player</label>
+            <input
+              type="text"
+              id="otherWhitePlayer"
+              name="otherWhitePlayer"
+              placeholder="Enter white player name..."
+              aria-describedby="other-white-help"
+              maxlength="50"
+              oninput="updateWinnerDropdown()"
+            />
+            <small id="other-white-help" class="help-text">Enter the white player's name.</small>
+          </div>
+          
+          <div class="form-group" id="otherBlackGroup" style="display: none;">
+            <label for="otherBlackPlayer">♟️ Other Black Player</label>
+            <input
+              type="text"
+              id="otherBlackPlayer"
+              name="otherBlackPlayer"
+              placeholder="Enter black player name..."
+              aria-describedby="other-black-help"
+              maxlength="50"
+              oninput="updateWinnerDropdown()"
+            />
+            <small id="other-black-help" class="help-text">Enter the black player's name.</small>
+          </div>
+        </div>
+
+        <!-- Winner and Game Ending Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="winner">🏆 Winner</label>
+            <select
+              id="winner"
+              name="winner"
+              required
+              aria-describedby="winner-help"
+            >
+              <option value="">Select winner...</option>
+              <option value="Draw">Draw</option>
+            </select>
+            <small id="winner-help" class="help-text">Required field. Who won the game?</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="gameEnding">🎯 Game Ending</label>
+            <select
+              id="gameEnding"
+              name="gameEnding"
+              required
+              aria-describedby="ending-help"
+            >
+              <option value="">Select how game ended...</option>
+              <option value="Checkmate">Checkmate</option>
+              <option value="Resignation">Resignation</option>
+              <option value="Time Out">Time Out</option>
+              <option value="Stalemate">Stalemate</option>
+              <option value="Insufficient Material">Insufficient Material</option>
+              <option value="Threefold Repetition">Threefold Repetition</option>
+              <option value="50-Move Rule">50-Move Rule</option>
+              <option value="Agreement">Mutual Agreement</option>
+            </select>
+            <small id="ending-help" class="help-text">Required field. How did the game end?</small>
+          </div>
+        </div>
+
+        <!-- Time Limit and Venue Row -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="timeLimit">⏰ Time Limit</label>
+            <div class="time-limit-container">
+              <select id="timeLimitMinutes" name="timeLimitMinutes" aria-describedby="time-limit-help">
+                <option value="">mm</option>
+                <option value="1">01</option>
+                <option value="2">02</option>
+                <option value="3">03</option>
+                <option value="4">04</option>
+                <option value="5">05</option>
+                <option value="6">06</option>
+                <option value="7">07</option>
+                <option value="8">08</option>
+                <option value="9">09</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+              </select>
+              <span class="time-separator">:</span>
+              <select id="timeLimitSeconds" name="timeLimitSeconds" aria-describedby="time-limit-help">
+                <option value="">ss</option>
+                <option value="0">00</option>
+                <option value="5">05</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="30">30</option>
+                <option value="45">45</option>
+              </select>
+            </div>
+            <small id="time-limit-help" class="help-text">Optional. Required if game ended by Time Out.</small>
+          </div>
+          
+          <div class="form-group">
+            <label for="venue">📍 Venue</label>
+            <select
+              id="venue"
+              name="venue"
+              aria-describedby="venue-help"
+              onchange="toggleOtherVenue(this.value)"
+            >
+              <option value="">Select venue...</option>
+              <option value="Fortalez del Arroyo Trebol">Fortalez del Arroyo Trebol</option>
+              <option value="House of Tears">House of Tears</option>
+              <option value="Other">Other</option>
+            </select>
+            <small id="venue-help" class="help-text">Optional. Where was the game played?</small>
+          </div>
+        </div>
+
+        <!-- Other Venue Field (initially hidden) -->
+        <div class="form-group" id="otherVenueGroup" style="display: none;">
+          <label for="otherVenue">📍 Other Venue</label>
+          <input
+            type="text"
+            id="otherVenue"
+            name="otherVenue"
+            placeholder="Enter the venue name..."
+            aria-describedby="other-venue-help"
+            maxlength="100"
+          />
+          <small id="other-venue-help" class="help-text">Enter the name of the venue.</small>
+        </div>
+
+        <!-- Brutality Scale -->
+        <div class="form-group">
+          <label for="brutality">💀 Brutality Scale</label>
+          <div class="slider-container">
+            <div class="slider-labels">
+              <span class="gentle">Meh (0)</span>
+              <span class="brutal">Brutal (5)</span>
+            </div>
+            <input
+              type="range"
+              id="brutality"
+              name="brutality"
+              min="0"
+              max="5"
+              value="0"
+              aria-describedby="brutality-help"
+              oninput="updateBrutalitySlider(this.value)"
+            />
+            <div class="slider-value" id="brutalityValue">Not rated</div>
+            <small id="brutality-help" class="help-text">Optional. Rate the brutality of the game from 0 (meh) to 5 (brutal)</small>
+          </div>
+        </div>
+
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label for="notes">📝 Notes</label>
+          <textarea
+            id="notes"
+            name="notes"
+            placeholder="Game notes, key moments, what you learned..."
+            aria-describedby="notes-help"
+            maxlength="500"
+          ></textarea>
+          <small id="notes-help" class="help-text">Optional. Record insights or key moments.</small>
+        </div>
+
+        <!-- Picture Upload -->
+        <div class="form-group">
+          <label for="picture">📸 Game Picture</label>
+          <input
+            type="file"
+            id="picture"
+            name="picture"
+            accept="image/*"
+            aria-describedby="picture-help"
+          />
+          <small id="picture-help" class="help-text">Optional. Upload a photo of the game, board position, or players.</small>
+        </div>
+
+        <button type="submit" class="submit-btn">Log Chess Game</button>
+      </form>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+      var submitted = false;
+      window.submitted = false;
+      
+      function selectResult(container) {
+        var radio = container.querySelector('input[type="radio"]');
+        if (event.target.type !== 'radio') {
+          radio.checked = true;
+        }
+      }
+      
+      function updateBrutalitySlider(value) {
+        var display = document.getElementById('brutalityValue');
+        var description = '';
+        var color = '';
+        
+        if (!value || value === '') {
+          description = 'Not rated';
+          color = '#666';
+        } else if (value == 0) {
+          description = 'Meh';
+          color = '#95a5a6';
+        } else if (value == 1) {
+          description = 'Sorta Harsh';
+          color = '#f39c12';
+        } else if (value == 2) {
+          description = 'Harsh';
+          color = '#e67e22';
+        } else if (value == 3) {
+          description = 'Very Harsh';
+          color = '#e74c3c';
+        } else if (value == 4) {
+          description = 'Devastating';
+          color = '#c0392b';
+        } else {
+          description = 'Brutal';
+          color = '#8b0000';
+        }
+        
+        if (value === '' || !value) {
+          display.textContent = description;
+        } else {
+          display.textContent = description + ' (' + value + ')';
+        }
+        display.style.color = color;
+      }
+      
+      function toggleOtherVenue(value) {
+        var otherVenueGroup = document.getElementById('otherVenueGroup');
+        var otherVenueField = document.getElementById('otherVenue');
+        
+        if (value === 'Other') {
+          otherVenueGroup.style.display = 'block';
+          otherVenueField.required = true;
+        } else {
+          otherVenueGroup.style.display = 'none';
+          otherVenueField.required = false;
+          otherVenueField.value = '';
+        }
+      }
+      
+      function toggleOtherPlayer(playerType, value) {
+        var otherPlayersRow = document.getElementById('otherPlayersRow');
+        var otherWhiteGroup = document.getElementById('otherWhiteGroup');
+        var otherBlackGroup = document.getElementById('otherBlackGroup');
+        var otherWhiteField = document.getElementById('otherWhitePlayer');
+        var otherBlackField = document.getElementById('otherBlackPlayer');
+        
+        if (playerType === 'white') {
+          if (value === 'Other') {
+            otherPlayersRow.style.display = 'flex';
+            otherWhiteGroup.style.display = 'block';
+            otherWhiteField.required = true;
+          } else {
+            otherWhiteGroup.style.display = 'none';
+            otherWhiteField.required = false;
+            otherWhiteField.value = '';
+            // Hide row if both are hidden
+            if (otherBlackGroup.style.display === 'none') {
+              otherPlayersRow.style.display = 'none';
+            }
+          }
+        } else if (playerType === 'black') {
+          if (value === 'Other') {
+            otherPlayersRow.style.display = 'flex';
+            otherBlackGroup.style.display = 'block';
+            otherBlackField.required = true;
+          } else {
+            otherBlackGroup.style.display = 'none';
+            otherBlackField.required = false;
+            otherBlackField.value = '';
+            // Hide row if both are hidden
+            if (otherWhiteGroup.style.display === 'none') {
+              otherPlayersRow.style.display = 'none';
+            }
+          }
+        }
+        
+        // Check for duplicate players after selection change
+        checkDuplicatePlayers();
+        // Update winner dropdown when players change
+        updateWinnerDropdown();
+      }
+      
+      function checkDuplicatePlayers() {
+        var whitePlayer = document.getElementById('whitePlayer').value;
+        var blackPlayer = document.getElementById('blackPlayer').value;
+        var whiteHelp = document.getElementById('white-help');
+        var blackHelp = document.getElementById('black-help');
+        
+        // Clear any existing error messages
+        if (whiteHelp) {
+          whiteHelp.classList.remove('show', 'error');
+          whiteHelp.textContent = 'Required field. Who played white?';
+        }
+        if (blackHelp) {
+          blackHelp.classList.remove('show', 'error');
+          blackHelp.textContent = 'Required field. Who played black?';
+        }
+        
+        // Check if same core player selected for both colors (but allow Other + Other)
+        if (whitePlayer && blackPlayer && 
+            whitePlayer === blackPlayer && 
+            whitePlayer !== 'Other' && 
+            ['Carlos', 'Carey', 'Jorge'].includes(whitePlayer)) {
+          if (whiteHelp) {
+            whiteHelp.textContent = '❌ Same player cannot be both white and black';
+            whiteHelp.classList.add('show', 'error');
+          }
+          if (blackHelp) {
+            blackHelp.textContent = '❌ Same player cannot be both white and black';
+            blackHelp.classList.add('show', 'error');
+          }
+        }
+        
+        // Update winner dropdown when players change
+        updateWinnerDropdown();
+      }
+      
+      function updateWinnerDropdown() {
+        var whitePlayer = document.getElementById('whitePlayer').value;
+        var blackPlayer = document.getElementById('blackPlayer').value;
+        var winnerDropdown = document.getElementById('winner');
+        var currentSelection = winnerDropdown.value;
+        
+        // Clear existing options except Draw
+        winnerDropdown.innerHTML = '<option value="">Select winner...</option><option value="Draw">Draw</option>';
+        
+        // Get actual player names (handle "Other" option)
+        var whitePlayerName = whitePlayer;
+        var blackPlayerName = blackPlayer;
+        
+        if (whitePlayer === 'Other') {
+          var otherWhiteInput = document.getElementById('otherWhitePlayer');
+          whitePlayerName = otherWhiteInput.value.trim() || 'White Player';
+        }
+        
+        if (blackPlayer === 'Other') {
+          var otherBlackInput = document.getElementById('otherBlackPlayer');
+          blackPlayerName = otherBlackInput.value.trim() || 'Black Player';
+        }
+        
+        // Add player options if players are selected
+        if (whitePlayer) {
+          var whiteOption = document.createElement('option');
+          whiteOption.value = 'White';
+          whiteOption.textContent = whitePlayerName + ' (White)';
+          winnerDropdown.insertBefore(whiteOption, winnerDropdown.lastElementChild);
+        }
+        
+        if (blackPlayer) {
+          var blackOption = document.createElement('option');
+          blackOption.value = 'Black';
+          blackOption.textContent = blackPlayerName + ' (Black)';
+          winnerDropdown.insertBefore(blackOption, winnerDropdown.lastElementChild);
+        }
+        
+        // Restore previous selection if still valid
+        if (currentSelection && (currentSelection === 'Draw' || 
+            (currentSelection === 'White' && whitePlayer) || 
+            (currentSelection === 'Black' && blackPlayer))) {
+          winnerDropdown.value = currentSelection;
+        }
+      }
+      
+      function handleSubmit(event) {
+        event.preventDefault();
+        
+        console.log('Form submission started');
+        console.log('typeof google:', typeof google);
+        console.log('google.script exists:', typeof google !== 'undefined' && google.script);
+        console.log('google.script.run exists:', typeof google !== 'undefined' && google.script && google.script.run);
+        
+        // Check if google.script.run is available
+        if (typeof google === 'undefined') {
+          alert('❌ Google Apps Script not loaded. Please ensure you are accessing this form from the deployed Web App URL.');
+          return false;
+        }
+        
+        if (!google.script) {
+          alert('❌ Google Apps Script API not available. Please try refreshing the page or using a different browser.');
+          return false;
+        }
+        
+        if (!google.script.run) {
+          alert('❌ Google Apps Script run function not available. Please try refreshing the page.');
+          return false;
+        }
+
+        // Basic validation
+        var whitePlayer = document.getElementById('whitePlayer').value;
+        var blackPlayer = document.getElementById('blackPlayer').value;
+        var winner = document.getElementById('winner').value;
+        var gameEnding = document.getElementById('gameEnding').value;
+        var venue = document.getElementById('venue').value.trim();
+        
+        // Hide all error messages first
+        var helpTexts = document.querySelectorAll('.help-text');
+        for (var i = 0; i < helpTexts.length; i++) {
+          helpTexts[i].classList.remove('show', 'error');
+        }
+        
+        var hasErrors = false;
+        
+        if (!whitePlayer) {
+          var whiteHelp = document.getElementById('white-help');
+          if (whiteHelp) {
+            whiteHelp.textContent = '❌ Please select white player';
+            whiteHelp.classList.add('show', 'error');
+          }
+          hasErrors = true;
+        }
+        
+        if (!blackPlayer) {
+          var blackHelp = document.getElementById('black-help');
+          if (blackHelp) {
+            blackHelp.textContent = '❌ Please select black player';
+            blackHelp.classList.add('show', 'error');
+          }
+          hasErrors = true;
+        }
+        
+        // Check if same core player (Carlos, Carey, Jorge) selected for both colors
+        // Allow Other + Other since they can be different people
+        if (whitePlayer && blackPlayer && 
+            whitePlayer === blackPlayer && 
+            whitePlayer !== 'Other' && 
+            ['Carlos', 'Carey', 'Jorge'].includes(whitePlayer)) {
+          var whiteHelp = document.getElementById('white-help');
+          var blackHelp = document.getElementById('black-help');
+          if (whiteHelp) {
+            whiteHelp.textContent = '❌ Same player cannot be both white and black';
+            whiteHelp.classList.add('show', 'error');
+          }
+          if (blackHelp) {
+            blackHelp.textContent = '❌ Same player cannot be both white and black';
+            blackHelp.classList.add('show', 'error');
+          }
+          hasErrors = true;
+        }
+        
+        if (!winner) {
+          var winnerHelp = document.getElementById('winner-help');
+          if (winnerHelp) {
+            winnerHelp.textContent = '❌ Please select winner';
+            winnerHelp.classList.add('show', 'error');
+          }
+          hasErrors = true;
+        }
+        
+        if (!gameEnding) {
+          var endingHelp = document.getElementById('ending-help');
+          if (endingHelp) {
+            endingHelp.textContent = '❌ Please select how game ended';
+            endingHelp.classList.add('show', 'error');
+          }
+          hasErrors = true;
+        }
+        
+        // Venue is now optional, so no validation needed
+        
+        // Check if Other venue is selected but no text provided
+        if (venue === 'Other') {
+          var otherVenue = document.getElementById('otherVenue').value.trim();
+          if (!otherVenue) {
+            var otherVenueHelp = document.getElementById('other-venue-help');
+            if (otherVenueHelp) {
+              otherVenueHelp.textContent = '❌ Please enter venue name';
+              otherVenueHelp.classList.add('show', 'error');
+            }
+            hasErrors = true;
+          }
+        }
+        
+        // Check if Other white player is selected but no text provided
+        if (whitePlayer === 'Other') {
+          var otherWhitePlayer = document.getElementById('otherWhitePlayer').value.trim();
+          if (!otherWhitePlayer) {
+            var otherWhiteHelp = document.getElementById('other-white-help');
+            if (otherWhiteHelp) {
+              otherWhiteHelp.textContent = '❌ Please enter white player name';
+              otherWhiteHelp.classList.add('show', 'error');
+            }
+            hasErrors = true;
+          }
+        }
+        
+        // Check if Other black player is selected but no text provided
+        if (blackPlayer === 'Other') {
+          var otherBlackPlayer = document.getElementById('otherBlackPlayer').value.trim();
+          if (!otherBlackPlayer) {
+            var otherBlackHelp = document.getElementById('other-black-help');
+            if (otherBlackHelp) {
+              otherBlackHelp.textContent = '❌ Please enter black player name';
+              otherBlackHelp.classList.add('show', 'error');
+            }
+            hasErrors = true;
+          }
+        }
+        
+        // Check if Time Limit is required when Game Ending is Time Out
+        var timeLimitMinutes = document.getElementById('timeLimitMinutes').value;
+        var timeLimitSeconds = document.getElementById('timeLimitSeconds').value;
+        var hasTimeLimit = timeLimitMinutes !== '' || timeLimitSeconds !== '';
+        var timeLimitHelp = document.getElementById('time-limit-help');
+        
+        if (gameEnding === 'Time Out' && !hasTimeLimit) {
+          if (timeLimitHelp) {
+            timeLimitHelp.textContent = '❌ Time limit required for Time Out ending';
+            timeLimitHelp.classList.add('show', 'error');
+          }
+          hasErrors = true;
+        }
+        
+        // Check if timed game is under 1 minute (only when time limit is set)
+        if (hasTimeLimit) {
+          var totalSeconds = (parseInt(timeLimitMinutes) || 0) * 60 + (parseInt(timeLimitSeconds) || 0);
+          if (totalSeconds < 60) {
+            if (timeLimitHelp) {
+              timeLimitHelp.textContent = '❌ Timed games must be at least 1 minute';
+              timeLimitHelp.classList.add('show', 'error');
+            }
+            hasErrors = true;
+          }
+        }
+        
+        if (hasErrors) {
+          return false;
+        }
+        
+        // Show loading state
+        var submitBtn = document.querySelector('.submit-btn');
+        submitBtn.textContent = 'Saving to Google Sheets...';
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.7';
+        
+        console.log('Calling addRow function...');
+        
+        // Prepare form data array
+        var actualVenue = venue === 'Other' ? document.getElementById('otherVenue').value.trim() : venue;
+        var actualWhitePlayer = whitePlayer === 'Other' ? document.getElementById('otherWhitePlayer').value.trim() : whitePlayer;
+        var actualBlackPlayer = blackPlayer === 'Other' ? document.getElementById('otherBlackPlayer').value.trim() : blackPlayer;
+        
+        // Handle picture upload
+        var pictureFile = document.getElementById('picture').files[0];
+        var pictureData = '';
+        
+        if (pictureFile) {
+          // Convert image to base64 for storage
+          var reader = new FileReader();
+          reader.onload = function(e) {
+            pictureData = e.target.result; // This includes the data:image/jpeg;base64, prefix
+            submitFormWithData();
+          };
+          reader.readAsDataURL(pictureFile);
+        } else {
+          submitFormWithData();
+        }
+        
+        function submitFormWithData() {
+          var formData = [
+            actualWhitePlayer,
+            actualBlackPlayer,
+            winner,
+            gameEnding,
+            (function() {
+              var minutes = document.getElementById('timeLimitMinutes').value;
+              var seconds = document.getElementById('timeLimitSeconds').value;
+              if (minutes === '' && seconds === '') return '';
+              return (minutes || '0') + ':' + (seconds || '00').padStart(2, '0');
+            })(),
+            actualVenue,
+            document.getElementById('brutality').value,
+            document.getElementById('notes').value,
+            pictureData
+          ];
+        
+          try {
+            var timeoutId = setTimeout(function() {
+              console.error('Google Apps Script call timed out');
+              alert('❌ Request timed out. Please check your internet connection and try again.');
+              
+              var submitBtn = document.querySelector('.submit-btn');
+              submitBtn.textContent = 'Log Chess Game';
+              submitBtn.disabled = false;
+              submitBtn.style.opacity = '1';
+            }, 30000);
+            
+            google.script.run
+              .withSuccessHandler(function(result) {
+                clearTimeout(timeoutId);
+                onSubmitSuccess(result);
+              })
+              .withFailureHandler(function(error) {
+                clearTimeout(timeoutId);
+                console.error('Google Apps Script error:', error);
+                onSubmitError(error);
+              })
+              .addRow(formData);
+              
+            console.log('Google Apps Script call initiated successfully');
+            
+          } catch (error) {
+            console.error('Error calling google.script.run:', error);
+            alert('❌ JavaScript error submitting form: ' + error.message + '. Please try refreshing the page.');
+          
+            var submitBtn = document.querySelector('.submit-btn');
+            submitBtn.textContent = 'Log Chess Game';
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+          }
+        }
+          
+        return false;
+      }
+      
+      function onSubmitSuccess(result) {
+        var helpTexts = document.querySelectorAll('.help-text');
+        for (var i = 0; i < helpTexts.length; i++) {
+          helpTexts[i].classList.remove('show', 'error');
+        }
+        
+        var submitBtn = document.querySelector('.submit-btn');
+        submitBtn.textContent = '✅ Game Logged Successfully!';
+        submitBtn.style.background = 'linear-gradient(135deg, #27ae60 0%, #2ecc71 100%)';
+        
+        // Reset form
+        document.querySelector('form').reset();
+        
+        // Reset brutality slider and other fields
+        updateBrutalitySlider('');
+        toggleOtherVenue('');
+        toggleOtherPlayer('white', '');
+        toggleOtherPlayer('black', '');
+        
+        setTimeout(function() {
+          submitBtn.textContent = 'Log Chess Game';
+          submitBtn.style.background = 'linear-gradient(135deg, #4a90e2 0%, #357abd 100%)';
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+          
+          document.getElementById('whitePlayer').focus();
+        }, 2000);
+      }
+      
+      function onSubmitError(error) {
+        alert('❌ Error: ' + error.message);
+        
+        var submitBtn = document.querySelector('.submit-btn');
+        submitBtn.textContent = 'Log Chess Game';
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        
+        console.error('Submit error:', error);
+      }
+      
+      // Make functions globally accessible
+      window.selectResult = selectResult;
+      window.handleSubmit = handleSubmit;
+      window.onSubmitSuccess = onSubmitSuccess;
+      window.onSubmitError = onSubmitError;
+      window.updateBrutalitySlider = updateBrutalitySlider;
+      window.toggleOtherVenue = toggleOtherVenue;
+      window.toggleOtherPlayer = toggleOtherPlayer;
+      window.checkDuplicatePlayers = checkDuplicatePlayers;
+      window.updateWinnerDropdown = updateWinnerDropdown;
+      
+      // Mobile browser compatibility check
+      function checkGoogleScriptAvailability() {
+        setTimeout(function() {
+          if (typeof google === 'undefined' || !google.script || !google.script.run) {
+            console.warn('Google Apps Script API not fully loaded. This may affect form submission on mobile browsers.');
+          } else {
+            console.log('Google Apps Script API loaded successfully');
+          }
+        }, 3000);
+      }
+      
+      // Initialize brutality slider on page load
+      updateBrutalitySlider(0);
+      
+      checkGoogleScriptAvailability();
+    </script>
+  </body>
+</html>
