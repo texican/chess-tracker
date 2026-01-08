@@ -48,8 +48,54 @@ function doGet(e) {
 }
 
 /**
+ * Retrieve the last match timestamp and session id from the sheet.
+ * @param {Sheet} sheet
+ * @returns {Object|null} { timestamp: Date, sessionId: string } or null if no data rows
+ */
+function getLastMatchInfo(sheet) {
+  var lastRow = sheet.getLastRow();
+  // If only header exists or sheet empty
+  if (!lastRow || lastRow <= 1) return null;
+
+  var lastValues = sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  // Find Session ID column if present
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var sessionCol = headers.indexOf('Session ID');
+
+  var sessionId = '';
+  if (sessionCol >= 0 && sessionCol < lastValues.length) {
+    sessionId = (lastValues[sessionCol] || '').toString().trim();
+  }
+
+  return {
+    timestamp: lastValues[0] ? new Date(lastValues[0]) : null,
+    sessionId: sessionId
+  };
+}
+
+/**
+ * Decide whether to start a new session based on time gap (hours).
+ * Returns an existing sessionId or new UUID.
+ */
+function assignSessionIdForNewMatch(sheet, gapHours) {
+  var info = getLastMatchInfo(sheet);
+  if (!info || !info.timestamp) {
+    return Utilities.getUuid();
+  }
+  var now = new Date();
+  var diffMs = now - info.timestamp;
+  var diffMinutes = diffMs / 60000;
+  var thresholdMinutes = (gapHours || 8) * 60; // default 8 hours
+  if (diffMinutes > thresholdMinutes || !info.sessionId) {
+    return Utilities.getUuid();
+  }
+  return info.sessionId;
+}
+
+/**
  * Processes chess game form submissions
- * @param {string[]} formData - Array: [whitePlayer, blackPlayer, winner, gameEnding, timeLimit, venue, brutality, notes, pictureData]
+ * @param {string[]} formData - Array: [whitePlayer, blackPlayer, winner, gameEnding, timeLimit, venue, brutality, notes, pictureData, whiteMulligan, blackMulligan]
  * @returns {Object} Success response with timestamp
  * @throws {Error} If validation fails or spreadsheet access fails
  */
@@ -114,11 +160,11 @@ function addRow(formData) {
     
     // Open or create the spreadsheet
     const spreadsheet = getOrCreateSpreadsheet();
-    let sheet = spreadsheet.getSheetByName('Sheet5');
+    let sheet = spreadsheet.getSheetByName('Matches');
     
-    // Create Sheet5 if it doesn't exist
+    // Create Matches if it doesn't exist
     if (!sheet) {
-      sheet = spreadsheet.insertSheet('Sheet5');
+      sheet = spreadsheet.insertSheet('Matches');
     }
     
     // Add headers if this is the first row
@@ -126,17 +172,20 @@ function addRow(formData) {
       const headers = [
         'Timestamp',
         'White Player',
-        'Black Player', 
+        'Black Player',
         'Winner',
         'Game Ending',
         'Time Limit',
         'Venue',
         'Brutality',
         'Notes',
-        'Picture URL'
+        'Picture URL',
+        'White Mulligan',
+        'Black Mulligan',
+        'Session ID'
       ];
       sheet.appendRow(headers);
-      
+
       // Format header row
       const headerRange = sheet.getRange(1, 1, 1, headers.length);
       headerRange.setFontWeight('bold');
@@ -184,6 +233,14 @@ function addRow(formData) {
       }
     }
     
+    // Determine session ID: prefer client-provided, otherwise assign based on time gap (8 hours)
+    const clientSessionId = (formData[11] || '').toString().trim();
+    let sessionId = clientSessionId;
+    if (!sessionId) {
+      sessionId = assignSessionIdForNewMatch(sheet, 8); // 8 hour gap
+    }
+    logEvent('session_assigned', { sessionId: sessionId, clientProvided: !!clientSessionId });
+
     // Prepare sanitized row data with timestamp
     const rowData = [
       new Date(),
@@ -195,11 +252,21 @@ function addRow(formData) {
       venue, // Already validated and sanitized
       Math.max(0, Math.min(5, parseInt(formData[6]) || 0)), // Brutality (clamped to 0-5)
       (formData[7] || '').toString().trim(),  // Notes (optional)
-      pictureUrl // Picture URL (optional)
+      pictureUrl, // Picture URL (optional)
+      (formData[9] || 'No').toString().trim(), // White Mulligan (Yes/No)
+      (formData[10] || 'No').toString().trim() // Black Mulligan (Yes/No)
+      , sessionId
     ];
     
     sheet.appendRow(rowData);
-    
+
+    // Attempt to update session summary (non-blocking).
+    try {
+      saveSessionSummary(sessionId);
+    } catch (e) {
+      logEvent('save_session_summary_called_error', { sessionId: sessionId, error: e.toString() });
+    }
+
     const result_obj = {
       success: true,
       message: 'Chess game logged successfully',
@@ -213,7 +280,8 @@ function addRow(formData) {
       game_ending: gameEnding,
       venue: venue || 'Not specified',
       has_time_limit: !!timeLimit,
-      brutality: rowData[7]
+      brutality: rowData[7],
+      session_id: sessionId
     });
     
     return result_obj;
@@ -226,6 +294,269 @@ function addRow(formData) {
     });
     
     throw new Error('Failed to save friend chess game: ' + error.message);
+  }
+}
+
+/**
+ * Compute aggregate statistics for a session identified by `sessionId`.
+ * Returns an object with counts and timing.
+ * @param {string} sessionId
+ * @returns {Object|null}
+ */
+function computeSessionStats(sessionId) {
+  if (!sessionId) {
+    throw new Error('sessionId is required');
+  }
+
+  const spreadsheet = getOrCreateSpreadsheet();
+  const matchesSheet = spreadsheet.getSheetByName('Matches');
+  if (!matchesSheet) return null;
+
+  const data = matchesSheet.getDataRange().getValues();
+  if (data.length < 2) return { sessionId: sessionId, matches: 0 };
+
+  const headers = data[0];
+  const col = {};
+  for (let i = 0; i < headers.length; i++) col[headers[i]] = i;
+
+  if (typeof col['Session ID'] === 'undefined') return null;
+
+  const sidCol = col['Session ID'];
+  const winnerCol = col['Winner'];
+  const brutalityCol = col['Brutality'];
+  const tsCol = col['Timestamp'];
+
+  let matches = 0, whiteWins = 0, blackWins = 0, draws = 0, brutalitySum = 0;
+  let startTime = null, endTime = null;
+
+  // Per-player session stats for specific players
+  const players = ['Carey', 'Carlos', 'Jorge'];
+  const perPlayer = {};
+  players.forEach(function(p) {
+    perPlayer[p] = {
+      played: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      inflicted: 0,
+      suffered: 0,
+      // color breakdown
+      wins_as_white: 0,
+      wins_as_black: 0,
+      losses_as_white: 0,
+      losses_as_black: 0,
+      draws_as_white: 0,
+      draws_as_black: 0
+    };
+  });
+
+  for (let r = 1; r < data.length; r++) {
+    const row = data[r];
+    const sid = (row[sidCol] || '').toString();
+    if (sid !== sessionId) continue;
+    matches++;
+    const winner = (row[winnerCol] || '').toString();
+    if (winner === 'White') {
+      whiteWins++;
+    } else if (winner === 'Black') {
+      blackWins++;
+    } else if (winner === 'Draw') {
+      draws++;
+    }
+
+    const b = parseInt(row[brutalityCol]) || 0;
+    brutalitySum += b;
+
+    const tsVal = row[tsCol];
+    const ts = tsVal ? new Date(tsVal) : null;
+    if (ts) {
+      if (!startTime || ts < startTime) startTime = ts;
+      if (!endTime || ts > endTime) endTime = ts;
+    }
+    // Per-player counting and brutality attribution
+    const whiteName = (row[col['White Player']] || '').toString();
+    const blackName = (row[col['Black Player']] || '').toString();
+    players.forEach(function(p) {
+      var playedThisMatch = false;
+      var playedAs = null;
+      if (whiteName === p) { playedThisMatch = true; playedAs = 'white'; }
+      if (blackName === p) { playedThisMatch = true; playedAs = 'black'; }
+      if (!playedThisMatch) return;
+
+      perPlayer[p].played++;
+      if (winner === 'Draw') {
+        perPlayer[p].draws++;
+        perPlayer[p].suffered += b;
+        if (playedAs === 'white') perPlayer[p].draws_as_white++;
+        if (playedAs === 'black') perPlayer[p].draws_as_black++;
+      } else if ((winner === 'White' && whiteName === p) || (winner === 'Black' && blackName === p)) {
+        perPlayer[p].wins++;
+        perPlayer[p].inflicted += b;
+        if (playedAs === 'white') perPlayer[p].wins_as_white++;
+        if (playedAs === 'black') perPlayer[p].wins_as_black++;
+      } else {
+        perPlayer[p].losses++;
+        perPlayer[p].suffered += b;
+        if (playedAs === 'white') perPlayer[p].losses_as_white++;
+        if (playedAs === 'black') perPlayer[p].losses_as_black++;
+      }
+    });
+  }
+
+  const avgBrutality = matches ? (brutalitySum / matches) : 0;
+
+  const stats = {
+    sessionId: sessionId,
+    matches: matches,
+    whiteWins: whiteWins,
+    blackWins: blackWins,
+    draws: draws,
+    avgBrutality: avgBrutality,
+    startTime: startTime ? startTime.toISOString() : null,
+    endTime: endTime ? endTime.toISOString() : null
+  };
+
+  // Attach per-player aggregated stats
+  players.forEach(function(p) {
+    var keyBase = p.replace(/\s+/g,'_').toLowerCase();
+    stats[keyBase + '_played'] = perPlayer[p].played;
+    stats[keyBase + '_wins'] = perPlayer[p].wins;
+    stats[keyBase + '_losses'] = perPlayer[p].losses;
+    stats[keyBase + '_draws'] = perPlayer[p].draws;
+    stats[keyBase + '_inflicted'] = perPlayer[p].inflicted;
+    stats[keyBase + '_suffered'] = perPlayer[p].suffered;
+    // color breakdown
+    stats[keyBase + '_wins_as_white'] = perPlayer[p].wins_as_white;
+    stats[keyBase + '_wins_as_black'] = perPlayer[p].wins_as_black;
+    stats[keyBase + '_losses_as_white'] = perPlayer[p].losses_as_white;
+    stats[keyBase + '_losses_as_black'] = perPlayer[p].losses_as_black;
+    stats[keyBase + '_draws_as_white'] = perPlayer[p].draws_as_white;
+    stats[keyBase + '_draws_as_black'] = perPlayer[p].draws_as_black;
+  });
+
+  logEvent('session_stats_computed', { sessionId: sessionId, matches: matches });
+  return stats;
+}
+
+/**
+ * Persist or update a session summary row in the `Sessions` sheet.
+ * Columns: Session ID | Start Time | End Time | Matches | White Wins | Black Wins | Draws | Avg Brutality | Last Updated
+ */
+function saveSessionSummary(sessionId) {
+  try {
+    if (!sessionId) throw new Error('sessionId required');
+
+    const spreadsheet = getOrCreateSpreadsheet();
+
+    // --- Sessions sheet (session-level aggregates) ---
+    let sheet = spreadsheet.getSheetByName('Sessions');
+    if (!sheet) sheet = spreadsheet.insertSheet('Sessions');
+
+    // Ensure session-level headers
+    if (sheet.getLastRow() === 0) {
+      const headers = ['Session ID', 'Start Time', 'End Time', 'Matches', 'White Wins', 'Black Wins', 'Draws', 'Avg Brutality', 'Last Updated'];
+      sheet.appendRow(headers);
+      const headerRange = sheet.getRange(1, 1, 1, headers.length);
+      headerRange.setFontWeight('bold');
+      headerRange.setBackground('#4a90e2');
+      headerRange.setFontColor('white');
+    }
+
+    const stats = computeSessionStats(sessionId);
+    if (!stats) return null;
+
+    // Upsert session-level row
+    const rows = sheet.getDataRange().getValues();
+    let existingRow = -1;
+    for (let r = 1; r < rows.length; r++) {
+      if ((rows[r][0] || '').toString() === sessionId) { existingRow = r + 1; break; }
+    }
+
+    const nowIso = new Date().toISOString();
+    const sessionValues = [
+      stats.sessionId,
+      stats.startTime || '',
+      stats.endTime || '',
+      stats.matches,
+      stats.whiteWins,
+      stats.blackWins,
+      stats.draws,
+      stats.avgBrutality,
+      nowIso
+    ];
+
+    if (existingRow > 0) {
+      sheet.getRange(existingRow, 1, 1, sessionValues.length).setValues([sessionValues]);
+      logEvent('session_summary_updated', { sessionId: sessionId });
+    } else {
+      sheet.appendRow(sessionValues);
+      logEvent('session_summary_created', { sessionId: sessionId });
+    }
+
+    // --- SessionPlayers sheet (per-player stats for each session) ---
+    let pSheet = spreadsheet.getSheetByName('SessionPlayers');
+    if (!pSheet) pSheet = spreadsheet.insertSheet('SessionPlayers');
+
+    if (pSheet.getLastRow() === 0) {
+      const pHeaders = ['Session ID', 'Player', 'Matches', 'Wins', 'Wins as White', 'Wins as Black', 'Losses', 'Losses as White', 'Losses as Black', 'Draws', 'Draws as White', 'Draws as Black', 'Inflicted', 'Suffered', 'Last Updated'];
+      pSheet.appendRow(pHeaders);
+      const pHeaderRange = pSheet.getRange(1, 1, 1, pHeaders.length);
+      pHeaderRange.setFontWeight('bold');
+      pHeaderRange.setBackground('#4a90e2');
+      pHeaderRange.setFontColor('white');
+    }
+
+    // Upsert rows for each known player
+    const players = ['Carey', 'Carlos', 'Jorge'];
+    const pData = pSheet.getDataRange().getValues();
+    players.forEach(function(p) {
+      const keyPlayed = (p.replace(/\s+/g,'_').toLowerCase() + '_played');
+      const keyWins = (p.replace(/\s+/g,'_').toLowerCase() + '_wins');
+      const keyLosses = (p.replace(/\s+/g,'_').toLowerCase() + '_losses');
+      const keyDraws = (p.replace(/\s+/g,'_').toLowerCase() + '_draws');
+      const keyInflicted = (p.replace(/\s+/g,'_').toLowerCase() + '_inflicted');
+      const keySuffered = (p.replace(/\s+/g,'_').toLowerCase() + '_suffered');
+
+      const prowValues = [
+        sessionId,
+        p,
+        stats[keyPlayed] || 0,
+        stats[keyWins] || 0,
+        stats[keyWins + '_as_white'] || 0,
+        stats[keyWins + '_as_black'] || 0,
+        stats[keyLosses] || 0,
+        stats[keyLosses + '_as_white'] || 0,
+        stats[keyLosses + '_as_black'] || 0,
+        stats[keyDraws] || 0,
+        stats[keyDraws + '_as_white'] || 0,
+        stats[keyDraws + '_as_black'] || 0,
+        stats[keyInflicted] || 0,
+        stats[keySuffered] || 0,
+        nowIso
+      ];
+
+      // Find existing row for this session+player
+      let existingPRow = -1;
+      for (let r = 1; r < pData.length; r++) {
+        const sid = (pData[r][0] || '').toString();
+        const playerName = (pData[r][1] || '').toString();
+        if (sid === sessionId && playerName === p) { existingPRow = r + 1; break; }
+      }
+
+      if (existingPRow > 0) {
+        pSheet.getRange(existingPRow, 1, 1, prowValues.length).setValues([prowValues]);
+      } else {
+        pSheet.appendRow(prowValues);
+      }
+    });
+
+    logEvent('session_players_updated', { sessionId: sessionId });
+
+    return { success: true, sessionId: sessionId };
+  } catch (error) {
+    logEvent('session_summary_error', { sessionId: sessionId, error: error.toString(), stack: error.stack });
+    // Do not throw — session summary errors should not prevent match logging
+    return { success: false, error: error.toString() };
   }
 }
 

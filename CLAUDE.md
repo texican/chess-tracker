@@ -185,20 +185,42 @@ If form issues occur:
 4. Check browser developer console for JavaScript errors
 5. Look for "Chess Game Data" spreadsheet in Google Drive
 
+Agent guidance for working on the `chess-tracker` Google Apps Script project.
+
+Key facts:
+- Architecture: single-file client (`index.html`) + server (`code.gs`) deployed as a GAS web app.
+- Important server functions: `addRow(formData)`, `computeSessionStats(sessionId)`, `saveSessionSummary(sessionId)`, `getOrCreateSpreadsheet()`.
+- Logging: use `logEvent(eventName, data)` for structured logs; follow existing event naming.
+
+Data model and sheets:
+- `Matches` is the primary source-of-truth. Columns include `Timestamp`, `White Player`, `Black Player`, `Winner`, `Game Ending`, `Time Limit`, `Venue`, `Brutality`, `Notes`, `Picture URL`, `White Mulligan`, `Black Mulligan`, `Session ID`.
+- `Sessions` stores session-level aggregates (one row per session): Session ID, start/end times, match counts and totals.
+- `SessionPlayers` stores per-player per-session stats (one row per session+player) and includes color breakdowns (wins/losses/draws as White/Black), plus `Inflicted` and `Suffered` brutality totals.
+
+Important behaviours to preserve:
+- Session assignment: server uses `assignSessionIdForNewMatch(sheet, 8)` with an 8-hour gap default.
+- Session summary errors must not prevent saving matches — `saveSessionSummary` is non-blocking and logs failures.
+- Picture uploads expect `data:image/...;base64,` data URIs and create Drive files with `file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)`.
+- Script Properties: maintain keys `SPREADSHEET_ID` and `lastSubmission` (1-second rate limit).
+- Sheet header formatting: header rows are created with bold white text on `#4a90e2` background; preserve when changing header columns.
+
+When modifying data structures:
+- Prefer adding new sheets or columns rather than renaming existing ones to avoid breaking existing spreadsheets that may already be in use.
+- If you add new players (beyond Carey/Carlos/Jorge), update `computeSessionStats` and `saveSessionSummary` to include them or generalize the player list handling.
+
+Developer workflow:
+- To deploy changes: run `clasp login` then `./deploy.sh` from the `chess-tracker` folder. Ensure `.clasp.json` has the correct `scriptId`.
+- Test by submitting the form and checking the `Matches` sheet; session summaries are created/updated in `Sessions` and `SessionPlayers`.
+
+When to ask the owner:
+- Before changing Drive sharing behavior or creating publicly-accessible files.
+- Before adding new OAuth scopes in `appsscript.json`.
+
 ## Development Principles
 
-- Edit `code.gs` and `index.html` directly for any changes
-- Test changes by copying files to Google Apps Script and deploying
-- All files are deployment-ready with no build process required
-- Simple, direct development workflow
 
 ## Alternative Development Workflow
 
 For developers preferring command-line tools, Google Clasp provides:
-- Local development with full IDE support
-- Command-line deployment (`clasp push`, `clasp deploy`)
-- TypeScript support for enhanced development
-- Better integration with Git workflows
-- Automated deployment capabilities
 
 See README.md for detailed Clasp setup instructions.

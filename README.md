@@ -1,3 +1,86 @@
+# Chess Tracker
+
+Small Google Apps Script web app to log friendly chess matches and compute session/player statistics.
+
+## What this project does
+- Provides a simple HTML form (`index.html`) that calls server functions in `code.gs` to record matches.
+- Stores raw match rows in a Google Sheet (`Matches`) and derives session summaries (`Sessions`) and per-player session stats (`SessionPlayers`).
+
+## Key files
+- `code.gs` — server logic: `addRow(formData)`, `computeSessionStats(sessionId)`, `saveSessionSummary(sessionId)`, helpers for spreadsheet access.
+- `index.html` — client UI that posts form data via `google.script.run`.
+- `deploy.sh` — helper to push + deploy via `clasp`.
+- `appsscript.json` — Apps Script configuration.
+
+## Deployment
+1. Authenticate `clasp` if needed:
+
+```bash
+clasp login
+```
+
+2. Ensure `.clasp.json` in this folder contains the correct `scriptId` (the project may already include it).
+3. Deploy with:
+
+```bash
+./deploy.sh
+```
+
+Note: `deploy.sh` uses `clasp` and will push `code.gs`/`index.html`/`appsscript.json` and create/update a web deployment.
+
+## Spreadsheet / Data model
+The app stores everything in a Google Spreadsheet whose ID is kept in Script Properties (`SPREADSHEET_ID`). If missing, the app will search Drive by name (`Friend Chess Games`) or create a new spreadsheet.
+
+- `Matches` (one row per logged match) columns:
+   - Timestamp
+   - White Player
+   - Black Player
+   - Winner (White|Black|Draw)
+   - Game Ending
+   - Time Limit
+   - Venue
+   - Brutality (0-5)
+   - Notes
+   - Picture URL
+   - White Mulligan (Yes/No)
+   - Black Mulligan (Yes/No)
+   - Session ID
+
+- `Sessions` (one row per session) columns:
+   - Session ID, Start Time, End Time, Matches, White Wins, Black Wins, Draws, Avg Brutality, Last Updated
+
+- `SessionPlayers` (one row per session+player) columns:
+   - Session ID, Player,
+   - Matches, Wins, Wins as White, Wins as Black,
+   - Losses, Losses as White, Losses as Black,
+   - Draws, Draws as White, Draws as Black,
+   - Inflicted, Suffered, Last Updated
+
+Session data are computed from `Matches` by `computeSessionStats(sessionId)` and persisted by `saveSessionSummary(sessionId)`.
+
+## Session behavior
+- Session IDs are assigned server-side when `addRow()` runs if the client did not supply one.
+- The sessionization rule: a new session starts if the time since the last match in `Matches` exceeds an 8-hour gap (configurable in `assignSessionIdForNewMatch`).
+
+## Brutality attribution
+- If a match has a winner, the winner 'inflicted' the `Brutality` value; the loser 'suffered' it.
+- For a draw, both players are credited as having 'suffered' the brutality value.
+
+## Pictures
+- The client can send a base64 data URI (e.g. `data:image/png;base64,...`). Server decodes and uploads to Drive and sets public sharing `ANYONE_WITH_LINK`.
+
+## Properties & Rate limiting
+- Script Properties keys used:
+   - `SPREADSHEET_ID` — target spreadsheet ID
+   - `lastSubmission` — timestamp used to enforce a 1 second cooldown between submissions
+
+## Notes for maintainers
+- Logging: Use `logEvent(eventName, data)` for structured logs.
+- `saveSessionSummary` is called after `addRow()` but wrapped so session-summary errors do not block match logging.
+- Header styling: new sheets add a header row with background `#4a90e2` and white bold text.
+
+If you want dedicated per-player sheets (Carey/Carlos/Jorge) for faster lookups, the repo can optionally sync `SessionPlayers` into separate player sheets — this is not enabled by default.
+
 # Chess Game Tracker - Google Apps Script Edition
 
 ![Google Apps Script](https://img.shields.io/badge/Google%20Apps%20Script-4285f4?style=flat&logo=google&logoColor=white)
