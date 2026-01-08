@@ -126,20 +126,17 @@ function setupMulliganLogic(mulliganVenues) {
 
 ### Files to Create/Update
 
-1. **chess-tracker/SETUP.md** (new)
+1. **SETUP.md** (new)
    - Step-by-step first-time setup guide
    - How to configure Script Properties
    - Screenshots of Script Properties interface
    - Example configurations for different use cases
 
-2. **chess-tracker/README.md** (update)
+2. **README.md** (update)
    - Add "Configuration" section
    - Document all Script Properties
    - Explain `.clasp.json` setup
    - Link to SETUP.md
-
-3. **behavior-log/SETUP.md** (new)
-   - Similar setup guide for behavior-log project
 
 ### Script Properties Reference Table
 
@@ -150,23 +147,6 @@ function setupMulliganLogic(mulliganVenues) {
 | `VENUES` | Comma-separated | `Home,Park` | `Home,Work,Cafe` | Game location options |
 | `MULLIGAN_VENUES` | Comma-separated | (none) | `Home,Backyard` | Venues where mulligans are allowed |
 | `SESSION_GAP_HOURS` | Number | `8` | `4` | Hours between matches to start new session |
-
----
-
-## Priority 4: Behavior-Log Audit
-
-### Actions Required
-
-1. Audit behavior-log submodule for hardcoded personal data
-2. Check for similar patterns (player names, locations, etc.)
-3. Apply same configuration externalization pattern
-4. Document any behavior-log specific configuration
-
-### Potential Issues to Check
-
-- Hardcoded behavior categories or impact types
-- Personal location names or context
-- Default values that should be configurable
 
 ---
 
@@ -194,16 +174,10 @@ function setupMulliganLogic(mulliganVenues) {
 
 ### Phase 4: Testing & Documentation (FUTURE)
 - [ ] Test with different player/venue configurations
-- [ ] Write SETUP.md guides
-- [ ] Update README files with configuration instructions
+- [ ] Write SETUP.md guide
+- [ ] Update README with configuration instructions
 - [ ] Test fresh clone and deployment process
 - [ ] Create migration guide for existing users
-
-### Phase 5: Behavior Log (FUTURE - IF NEEDED)
-- [ ] Audit for personal data
-- [ ] Apply same configuration patterns
-- [ ] Document configuration
-- [ ] Test and validate
 
 ---
 
@@ -213,9 +187,8 @@ function setupMulliganLogic(mulliganVenues) {
 |-------|---|---|---|
 | Phase 2: Config System | 2 | 0 | ~50 |
 | Phase 3: Chess Tracker | 2 | 0 | ~150 |
-| Phase 4: Documentation | 3 | 2 | ~200 |
-| Phase 5: Behavior Log | 1 | 1 | ~50 |
-| **TOTAL** | **8** | **3** | **~450** |
+| Phase 4: Documentation | 2 | 1 | ~150 |
+| **TOTAL** | **6** | **1** | **~350** |
 
 ---
 
