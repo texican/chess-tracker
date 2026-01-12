@@ -60,7 +60,9 @@ Session data are computed from `Matches` by `computeSessionStats(sessionId)` and
 
 ## Session behavior
 - Session IDs are assigned server-side when `addRow()` runs if the client did not supply one.
-- The sessionization rule: a new session starts if the time since the last match in `Matches` exceeds an 8-hour gap (configurable in `assignSessionIdForNewMatch`).
+- A new session starts when:
+  1. The time since the last match exceeds the configured gap (default: 6 hours, configurable via `SESSION_GAP_HOURS`)
+  2. OR the venue explicitly changes from the previous match (even within the time window)
 
 ## Brutality attribution
 - If a match has a winner, the winner 'inflicted' the `Brutality` value; the loser 'suffered' it.
@@ -274,6 +276,70 @@ let spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADS
 **Properties Stored:**
 - `SPREADSHEET_ID` - ID of the Google Sheet used for data storage
 - `lastSubmission` - Timestamp of last form submission for rate limiting
+
+## ⚙️ Configuration
+
+This chess tracker is fully configurable via **Script Properties**. All player names, venues, and feature settings can be customized without modifying code.
+
+### Script Properties Reference
+
+Set these properties in Google Apps Script → Project Settings → Script Properties:
+
+| Property Key | Type | Default | Example | Description |
+|---|---|---|---|---|
+| `SPREADSHEET_ID` | String | (auto-create) | `1abc...xyz` | Target Google Sheet ID |
+| `PLAYERS` | Comma-separated | `Player 1,Player 2,Player 3` | `Alice,Bob,Carol` | Chess player names for dropdown |
+| `VENUES` | Comma-separated | `Home,Park` | `Home,Work,Cafe` | Game location options |
+| `MULLIGAN_VENUES` | Comma-separated | (none) | `Home,Backyard` | Venues where mulligans are allowed |
+| `SESSION_GAP_HOURS` | Number | `6` | `4` | Hours between matches to start new session |
+
+### How to Configure
+
+1. **Open your Google Apps Script project**
+2. Click **Project Settings** (⚙️ icon in left sidebar)
+3. Scroll to **Script Properties** section
+4. Click **Add script property** for each setting you want to customize
+5. Enter the property key and value
+6. Click **Save script properties**
+7. Redeploy your web app for changes to take effect
+
+### Configuration Examples
+
+**Example 1: Different Players**
+```
+Property: PLAYERS
+Value: Alice,Bob,Charlie,Diana
+```
+This will populate the player dropdowns with Alice, Bob, Charlie, and Diana.
+
+**Example 2: Custom Venues**
+```
+Property: VENUES
+Value: Home,Coffee Shop,Chess Club,Park
+```
+This will show these four venues in the venue dropdown.
+
+**Example 3: Enable Mulligan at Multiple Venues**
+```
+Property: MULLIGAN_VENUES
+Value: Home,Chess Club
+```
+The mulligan section will appear when either "Home" or "Chess Club" is selected as the venue.
+
+**Example 4: Shorter Session Gap**
+```
+Property: SESSION_GAP_HOURS
+Value: 4
+```
+Matches played within 4 hours will be grouped into the same session.
+
+### Clone-Friendly Design
+
+This configuration system makes the chess tracker fully **clone-friendly**:
+- No need to edit code files to customize for your group
+- Each deployment can have different players/venues
+- Easy to share with friends - they just set their own Script Properties
+- All sensitive/personal data stays in your Script Properties (not in code)
 
 ### Using a Pre-existing Google Sheet
 

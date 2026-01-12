@@ -2,18 +2,23 @@
 
 This document outlines planned improvements to make the repository fully configurable and clone-friendly for other users.
 
-## Current State (2026-01-08)
+## Current State (2026-01-12)
 
 ✅ **Completed:**
 - `.clasp.json` added to `.gitignore` in all repositories
 - `.clasp.json.example` templates created for both submodules
 - Google Apps Script IDs protected from version control
 - Never committed sensitive Script IDs to git history
+- **Configuration externalization fully implemented:**
+  - Server-side `getConfig()` function using Script Properties
+  - Dynamic player list loading in `computeSessionStats()` and `saveSessionSummary()`
+  - Client-side configuration loading with `google.script.run`
+  - Dynamic player dropdown population
+  - Dynamic venue dropdown population
+  - Configurable mulligan venues
+  - Form validation updated to use dynamic player lists
 
-⚠️ **Still Hardcoded:**
-- Player names in chess-tracker
-- Venue names in chess-tracker
-- Venue-specific feature logic (Mulligan section)
+✅ **All work completed - v2.0.0 released 2026-01-12**
 
 ---
 
@@ -157,27 +162,33 @@ function setupMulliganLogic(mulliganVenues) {
 - [x] Create `.clasp.json.example` templates
 - [x] Update main repo `.gitignore`
 
-### Phase 2: Configuration System (FUTURE)
-- [ ] Design configuration schema (Script Properties)
-- [ ] Implement server-side `getConfig()` function
-- [ ] Add configuration validation
-- [ ] Document Script Properties setup
+### Phase 2: Configuration System (✅ COMPLETED 2026-01-12)
+- [x] Design configuration schema (Script Properties)
+- [x] Implement server-side `getConfig()` function
+- [x] Add configuration validation
+- [x] Document Script Properties setup in README.md
 
-### Phase 3: Chess Tracker Refactoring (FUTURE)
-- [ ] Externalize player names
-- [ ] Externalize venue names
-- [ ] Make mulligan feature configurable
-- [ ] Generalize `computeSessionStats()` for dynamic player lists
-- [ ] Generalize `saveSessionSummary()` for dynamic player lists
-- [ ] Update client-side to populate dropdowns dynamically
-- [ ] Remove all hardcoded player/venue references
+### Phase 3: Chess Tracker Refactoring (✅ COMPLETED 2026-01-12)
+- [x] Externalize player names
+- [x] Externalize venue names
+- [x] Make mulligan feature configurable
+- [x] Generalize `computeSessionStats()` for dynamic player lists
+- [x] Generalize `saveSessionSummary()` for dynamic player lists
+- [x] Update client-side to populate dropdowns dynamically
+- [x] Remove all hardcoded player/venue references
 
-### Phase 4: Testing & Documentation (FUTURE)
-- [ ] Test with different player/venue configurations
-- [ ] Write SETUP.md guide
-- [ ] Update README with configuration instructions
-- [ ] Test fresh clone and deployment process
-- [ ] Create migration guide for existing users
+### Phase 4: Documentation (✅ COMPLETED 2026-01-12)
+- [x] Update README with comprehensive configuration section
+- [x] Add Script Properties reference table with examples
+- [x] Document clone-friendly design benefits
+- [x] Create migration guide in CHANGELOG.md
+- [x] Update CLAUDE.md with configuration system details
+
+### Phase 5: Future Testing & Enhancements
+- [ ] Test with different player/venue configurations in production
+- [ ] Consider SETUP.md guide for first-time users
+- [ ] Test fresh clone and deployment process with new users
+- [ ] Gather feedback on configuration system usability
 
 ---
 
@@ -278,5 +289,5 @@ Before marking this work complete, test:
 
 ---
 
-**Last Updated:** 2026-01-08
-**Status:** Security phase complete, configuration externalization planned for future
+**Last Updated:** 2026-01-12
+**Status:** v2.0.0 released - Full configuration externalization complete

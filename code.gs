@@ -10,8 +10,8 @@
  * - Time control and platform recording
  */
 
-const VERSION = '1.0.0';
-const LAST_UPDATED = '2026-01-08';
+const VERSION = '2.0.0';
+const LAST_UPDATED = '2026-01-12';
 
 /**
  * Structured logging helper
@@ -26,6 +26,36 @@ function logEvent(event, data) {
     version: VERSION
   };
   Logger.log(JSON.stringify(logEntry));
+}
+
+/**
+ * Get configuration from Script Properties
+ * @returns {Object} Configuration object with players, venues, mulligan settings
+ */
+function getConfig() {
+  const props = PropertiesService.getScriptProperties();
+
+  // Get players list (comma-separated)
+  const playersStr = props.getProperty('PLAYERS') || 'Player 1,Player 2,Player 3';
+  const players = playersStr.split(',').map(function(p) { return p.trim(); }).filter(function(p) { return p; });
+
+  // Get venues list (comma-separated)
+  const venuesStr = props.getProperty('VENUES') || 'Home,Park';
+  const venues = venuesStr.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
+
+  // Get mulligan-enabled venues (comma-separated)
+  const mulliganStr = props.getProperty('MULLIGAN_VENUES') || '';
+  const mulliganVenues = mulliganStr.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
+
+  // Get session gap hours (default 6)
+  const sessionGapHours = parseInt(props.getProperty('SESSION_GAP_HOURS') || '6');
+
+  return {
+    players: players,
+    venues: venues,
+    mulliganVenues: mulliganVenues,
+    sessionGapHours: sessionGapHours
+  };
 }
 
 /**
@@ -48,9 +78,9 @@ function doGet(e) {
 }
 
 /**
- * Retrieve the last match timestamp and session id from the sheet.
+ * Retrieve the last match timestamp, session id, and venue from the sheet.
  * @param {Sheet} sheet
- * @returns {Object|null} { timestamp: Date, sessionId: string } or null if no data rows
+ * @returns {Object|null} { timestamp: Date, sessionId: string, venue: string } or null if no data rows
  */
 function getLastMatchInfo(sheet) {
   var lastRow = sheet.getLastRow();
@@ -59,37 +89,60 @@ function getLastMatchInfo(sheet) {
 
   var lastValues = sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0];
 
-  // Find Session ID column if present
+  // Find Session ID and Venue columns if present
   var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   var sessionCol = headers.indexOf('Session ID');
+  var venueCol = headers.indexOf('Venue');
 
   var sessionId = '';
   if (sessionCol >= 0 && sessionCol < lastValues.length) {
     sessionId = (lastValues[sessionCol] || '').toString().trim();
   }
 
+  var venue = '';
+  if (venueCol >= 0 && venueCol < lastValues.length) {
+    venue = (lastValues[venueCol] || '').toString().trim();
+  }
+
   return {
     timestamp: lastValues[0] ? new Date(lastValues[0]) : null,
-    sessionId: sessionId
+    sessionId: sessionId,
+    venue: venue
   };
 }
 
 /**
- * Decide whether to start a new session based on time gap (hours).
+ * Decide whether to start a new session based on time gap (hours) and venue change.
  * Returns an existing sessionId or new UUID.
+ * @param {Sheet} sheet - The Matches sheet
+ * @param {number} gapHours - Hours threshold for new session
+ * @param {string} currentVenue - Venue for the current match
+ * @returns {string} Session ID (existing or new UUID)
  */
-function assignSessionIdForNewMatch(sheet, gapHours) {
+function assignSessionIdForNewMatch(sheet, gapHours, currentVenue) {
   var info = getLastMatchInfo(sheet);
   if (!info || !info.timestamp) {
     return Utilities.getUuid();
   }
+
+  // Check if venue changed - if so, start new session
+  if (currentVenue && info.venue && currentVenue !== info.venue) {
+    logEvent('new_session_venue_change', {
+      previousVenue: info.venue,
+      currentVenue: currentVenue
+    });
+    return Utilities.getUuid();
+  }
+
+  // Check time gap
   var now = new Date();
   var diffMs = now - info.timestamp;
   var diffMinutes = diffMs / 60000;
-  var thresholdMinutes = (gapHours || 8) * 60; // default 8 hours
+  var thresholdMinutes = gapHours * 60;
   if (diffMinutes > thresholdMinutes || !info.sessionId) {
     return Utilities.getUuid();
   }
+
   return info.sessionId;
 }
 
@@ -233,13 +286,20 @@ function addRow(formData) {
       }
     }
     
-    // Determine session ID: prefer client-provided, otherwise assign based on time gap (8 hours)
+    // Determine session ID: prefer client-provided, otherwise assign based on time gap and venue change
     const clientSessionId = (formData[11] || '').toString().trim();
     let sessionId = clientSessionId;
     if (!sessionId) {
-      sessionId = assignSessionIdForNewMatch(sheet, 8); // 8 hour gap
+      try {
+        const config = getConfig();
+        sessionId = assignSessionIdForNewMatch(sheet, config.sessionGapHours, venue);
+      } catch (e) {
+        // If session assignment fails, create new UUID as fallback
+        logEvent('session_assignment_error', { error: e.toString() });
+        sessionId = Utilities.getUuid();
+      }
     }
-    logEvent('session_assigned', { sessionId: sessionId, clientProvided: !!clientSessionId });
+    logEvent('session_assigned', { sessionId: sessionId, clientProvided: !!clientSessionId, venue: venue });
 
     // Prepare sanitized row data with timestamp
     const rowData = [
@@ -329,8 +389,9 @@ function computeSessionStats(sessionId) {
   let matches = 0, whiteWins = 0, blackWins = 0, draws = 0, brutalitySum = 0;
   let startTime = null, endTime = null;
 
-  // Per-player session stats for specific players
-  const players = ['Carey', 'Carlos', 'Jorge'];
+  // Per-player session stats using configured players
+  const config = getConfig();
+  const players = config.players;
   const perPlayer = {};
   players.forEach(function(p) {
     perPlayer[p] = {
@@ -506,8 +567,9 @@ function saveSessionSummary(sessionId) {
       pHeaderRange.setFontColor('white');
     }
 
-    // Upsert rows for each known player
-    const players = ['Carey', 'Carlos', 'Jorge'];
+    // Upsert rows for each configured player
+    const config = getConfig();
+    const players = config.players;
     const pData = pSheet.getDataRange().getValues();
     players.forEach(function(p) {
       const keyPlayed = (p.replace(/\s+/g,'_').toLowerCase() + '_played');

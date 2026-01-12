@@ -78,6 +78,10 @@ The application uses Google Apps Script's Properties Service for persistent conf
 **Properties Stored:**
 - `SPREADSHEET_ID`: ID of the target Google Sheet for data storage
 - `lastSubmission`: Timestamp of last form submission (rate limiting)
+- `PLAYERS`: Comma-separated list of player names for dropdowns (default: Player 1,Player 2,Player 3)
+- `VENUES`: Comma-separated list of venue names (default: Home,Park)
+- `MULLIGAN_VENUES`: Comma-separated list of venues where mulligan is allowed (default: none)
+- `SESSION_GAP_HOURS`: Number of hours between matches to start a new session (default: 6)
 
 **Implementation:**
 ```javascript
@@ -198,7 +202,7 @@ Data model and sheets:
 - `SessionPlayers` stores per-player per-session stats (one row per session+player) and includes color breakdowns (wins/losses/draws as White/Black), plus `Inflicted` and `Suffered` brutality totals.
 
 Important behaviours to preserve:
-- Session assignment: server uses `assignSessionIdForNewMatch(sheet, 8)` with an 8-hour gap default.
+- Session assignment: server uses `assignSessionIdForNewMatch(sheet, gapHours, venue)` which creates a new session if the time gap exceeds the configured threshold OR if the venue changes from the previous match.
 - Session summary errors must not prevent saving matches — `saveSessionSummary` is non-blocking and logs failures.
 - Picture uploads expect `data:image/...;base64,` data URIs and create Drive files with `file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)`.
 - Script Properties: maintain keys `SPREADSHEET_ID` and `lastSubmission` (1-second rate limit).
@@ -206,7 +210,7 @@ Important behaviours to preserve:
 
 When modifying data structures:
 - Prefer adding new sheets or columns rather than renaming existing ones to avoid breaking existing spreadsheets that may already be in use.
-- If you add new players (beyond Carey/Carlos/Jorge), update `computeSessionStats` and `saveSessionSummary` to include them or generalize the player list handling.
+- **Configuration System (v2.0.0+)**: Player names, venues, and mulligan settings are now fully configurable via Script Properties. The `getConfig()` function loads all configuration, and player/venue lists are dynamically populated on page load. No code changes needed to customize for different user groups.
 
 Developer workflow:
 - To deploy changes: run `clasp login` then `./deploy.sh` from the `chess-tracker` folder. Ensure `.clasp.json` has the correct `scriptId`.

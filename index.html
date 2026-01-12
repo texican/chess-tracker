@@ -770,10 +770,7 @@
           <select id="whitePlayer" name="whitePlayer" required aria-describedby="white-help"
             onchange="toggleOtherPlayer('white', this.value); checkDuplicatePlayers(); updateMulliganLabels();">
             <option value="">White</option>
-            <option value="Carlos">Carlos</option>
-            <option value="Carey">Carey</option>
-            <option value="Jorge">Jorge</option>
-            <option value="Other">Other</option>
+            <!-- Options populated dynamically from configuration -->
           </select>
           <small id="white-help" class="help-text">Required</small>
         </div>
@@ -783,10 +780,7 @@
           <select id="blackPlayer" name="blackPlayer" required aria-describedby="black-help"
             onchange="toggleOtherPlayer('black', this.value); checkDuplicatePlayers(); updateMulliganLabels();">
             <option value="">Black</option>
-            <option value="Carlos">Carlos</option>
-            <option value="Carey">Carey</option>
-            <option value="Jorge">Jorge</option>
-            <option value="Other">Other</option>
+            <!-- Options populated dynamically from configuration -->
           </select>
           <small id="black-help" class="help-text">Required</small>
         </div>
@@ -874,9 +868,7 @@
           <select id="venue" name="venue" aria-describedby="venue-help"
             onchange="toggleOtherVenue(this.value); toggleMulliganSection(this.value);">
             <option value="">Venue</option>
-            <option value="Fortalez del Arroyo Trebol">Fortalez del Arroyo Trebol</option>
-            <option value="House of Tears">House of Tears</option>
-            <option value="Other">Other</option>
+            <!-- Options populated dynamically from configuration -->
           </select>
           <small id="venue-help" class="help-text">Optional</small>
         </div>
@@ -946,6 +938,99 @@
 
   <!-- JavaScript -->
   <script>
+    // Global configuration storage
+    var appConfig = {
+      players: ['Player 1', 'Player 2', 'Player 3'],
+      venues: ['Home', 'Park'],
+      mulliganVenues: []
+    };
+
+    // Load configuration from server on page load
+    function loadConfiguration() {
+      google.script.run
+        .withSuccessHandler(function(config) {
+          appConfig = config;
+          populatePlayerDropdowns(config.players);
+          populateVenueDropdown(config.venues);
+          setupMulliganLogic(config.mulliganVenues);
+        })
+        .withFailureHandler(function(error) {
+          console.error('Failed to load configuration:', error);
+          // Use default values already in appConfig
+          populatePlayerDropdowns(appConfig.players);
+          populateVenueDropdown(appConfig.venues);
+          setupMulliganLogic(appConfig.mulliganVenues);
+        })
+        .getConfig();
+    }
+
+    // Populate player dropdowns with configured players
+    function populatePlayerDropdowns(players) {
+      var whiteSelect = document.getElementById('whitePlayer');
+      var blackSelect = document.getElementById('blackPlayer');
+
+      // Clear existing options except the first placeholder
+      whiteSelect.innerHTML = '<option value="">White</option>';
+      blackSelect.innerHTML = '<option value="">Black</option>';
+
+      // Add each configured player
+      players.forEach(function(player) {
+        var whiteOption = document.createElement('option');
+        whiteOption.value = player;
+        whiteOption.textContent = player;
+        whiteSelect.appendChild(whiteOption);
+
+        var blackOption = document.createElement('option');
+        blackOption.value = player;
+        blackOption.textContent = player;
+        blackSelect.appendChild(blackOption);
+      });
+
+      // Always add "Other" option at the end
+      var whiteOther = document.createElement('option');
+      whiteOther.value = 'Other';
+      whiteOther.textContent = 'Other';
+      whiteSelect.appendChild(whiteOther);
+
+      var blackOther = document.createElement('option');
+      blackOther.value = 'Other';
+      blackOther.textContent = 'Other';
+      blackSelect.appendChild(blackOther);
+    }
+
+    // Populate venue dropdown with configured venues
+    function populateVenueDropdown(venues) {
+      var venueSelect = document.getElementById('venue');
+
+      // Clear existing options except the first placeholder
+      venueSelect.innerHTML = '<option value="">Venue</option>';
+
+      // Add each configured venue
+      venues.forEach(function(venue) {
+        var option = document.createElement('option');
+        option.value = venue;
+        option.textContent = venue;
+        venueSelect.appendChild(option);
+      });
+
+      // Always add "Other" option at the end
+      var otherOption = document.createElement('option');
+      otherOption.value = 'Other';
+      otherOption.textContent = 'Other';
+      venueSelect.appendChild(otherOption);
+    }
+
+    // Setup mulligan logic based on configured venues
+    function setupMulliganLogic(mulliganVenues) {
+      // Update the toggleMulliganSection function to use configured venues
+      appConfig.mulliganVenues = mulliganVenues;
+    }
+
+    // Initialize configuration on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      loadConfiguration();
+    });
+
     function selectResult(container) {
       var radio = container.querySelector('input[type="radio"]');
       if (event.target.type !== 'radio') {
@@ -962,7 +1047,8 @@
 
     function toggleMulliganSection(venueValue) {
       var mulliganSection = document.getElementById('mulliganSection');
-      if (venueValue === 'Fortalez del Arroyo Trebol') {
+      // Check if venue is in the configured mulligan venues list
+      if (appConfig.mulliganVenues.indexOf(venueValue) !== -1) {
         mulliganSection.style.display = 'block';
         updateMulliganLabels();
       } else {
@@ -1141,7 +1227,7 @@
       if (whitePlayer && blackPlayer &&
         whitePlayer === blackPlayer &&
         whitePlayer !== 'Other' &&
-        ['Carlos', 'Carey', 'Jorge'].includes(whitePlayer)) {
+        appConfig.players.indexOf(whitePlayer) !== -1) {
         if (whiteHelp) {
           whiteHelp.textContent = '❌ Same player cannot be both white and black';
           whiteHelp.classList.add('show', 'error');
@@ -1301,12 +1387,12 @@
         hasErrors = true;
       }
 
-      // Check if same core player (Carlos, Carey, Jorge) selected for both colors
+      // Check if same core player selected for both colors
       // Allow Other + Other since they can be different people
       if (whitePlayer && blackPlayer &&
         whitePlayer === blackPlayer &&
         whitePlayer !== 'Other' &&
-        ['Carlos', 'Carey', 'Jorge'].includes(whitePlayer)) {
+        appConfig.players.indexOf(whitePlayer) !== -1) {
         var whiteHelp = document.getElementById('white-help');
         var blackHelp = document.getElementById('black-help');
         if (whiteHelp) {
