@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Chess Match Tracker</title>
+  <title>Chess Tracker 2026</title>
   <meta name="description" content="Track your chess matches and analyze your performance over time" />
   <meta name="keywords" content="chess tracker, chess matches, rating tracking, chess analytics" />
 
@@ -750,6 +750,224 @@
       box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.2);
       transform: translateY(-2px);
     }
+
+    /* Current Session Display Styles */
+    #current-session-container {
+      margin-bottom: 20px;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .session-header {
+      background: #7c3aed;
+      color: #f8f9fa;
+      padding: clamp(12px, 3cqh, 16px);
+      user-select: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: clamp(10px, 2cqw, 15px);
+    }
+
+    .session-header-left {
+      cursor: pointer;
+      flex: 0 0 auto;
+    }
+
+    .session-header-left:hover h3 {
+      opacity: 0.9;
+    }
+
+    .session-header-right {
+      display: flex;
+      gap: clamp(8px, 2cqw, 12px);
+      align-items: center;
+      flex: 1 1 auto;
+      justify-content: flex-end;
+    }
+
+    #session-selector {
+      background: #000000;
+      color: #f8f9fa;
+      border: 1px solid #2a2a2a;
+      padding: clamp(6px, 1.5cqh, 8px) clamp(10px, 2.5cqw, 14px);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: clamp(0.8rem, 2.3cqw, 0.85rem);
+      font-weight: 500;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Inter', sans-serif;
+      max-width: 200px;
+      min-width: 120px;
+    }
+
+    #session-selector:hover {
+      background: #1a1a1a;
+      border-color: #3a3a3a;
+    }
+
+    #session-selector:focus {
+      outline: none;
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
+    }
+
+    .session-content {
+      border: 1px solid #2a2a2a;
+      border-top: none;
+      border-radius: 0 0 12px 12px;
+      padding: clamp(12px, 3cqh, 20px);
+      background: #1a1a1a;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .session-content.collapsed {
+      display: none;
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      background: #000000;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .stats-table th,
+    .stats-table td {
+      padding: clamp(8px, 2cqh, 12px) clamp(8px, 2cqw, 12px);
+      text-align: center;
+      border: 1px solid #2a2a2a;
+      font-size: clamp(0.85rem, 2.5cqw, 0.95rem);
+    }
+
+    .stats-table th {
+      background: #7c3aed;
+      color: #f8f9fa;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .stats-table tbody tr:hover {
+      background: rgba(124, 58, 237, 0.1);
+      transition: background 0.2s;
+    }
+
+    .stats-table tbody tr:first-child {
+      background: rgba(124, 58, 237, 0.05);
+    }
+
+    #refresh-session-btn {
+      background: #000000;
+      color: #f8f9fa;
+      border: 1px solid #2a2a2a;
+      padding: clamp(6px, 1.5cqh, 8px) clamp(10px, 2.5cqw, 14px);
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: clamp(0.85rem, 2.5cqw, 0.9rem);
+      font-weight: 600;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: 'Inter', sans-serif;
+    }
+
+    #refresh-session-btn:hover {
+      background: #1a1a1a;
+      border-color: #3a3a3a;
+      transform: translateY(-2px);
+    }
+
+    #refresh-session-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    #session-loading,
+    #session-no-data,
+    #session-error {
+      font-size: clamp(0.9rem, 2.8cqw, 1rem);
+    }
+
+    #session-loading,
+    #session-no-data {
+      color: rgba(248, 249, 250, 0.7);
+    }
+
+    .session-meta {
+      margin-bottom: clamp(10px, 2.5cqh, 15px);
+    }
+
+    .session-meta-inline {
+      display: flex;
+      align-items: center;
+      gap: clamp(8px, 2cqw, 12px);
+      flex-wrap: wrap;
+      font-size: clamp(0.9rem, 2.8cqw, 1rem);
+    }
+
+    .session-venue-badge {
+      background: rgba(124, 58, 237, 0.2);
+      color: #f8f9fa;
+      padding: clamp(4px, 1cqh, 6px) clamp(10px, 2.5cqw, 14px);
+      border-radius: 6px;
+      font-weight: 600;
+      border: 1px solid rgba(124, 58, 237, 0.3);
+    }
+
+    .session-separator {
+      color: rgba(248, 249, 250, 0.4);
+      font-weight: bold;
+    }
+
+    .session-match-badge {
+      color: rgba(248, 249, 250, 0.8);
+      font-weight: 500;
+    }
+
+    .session-match-badge span {
+      color: #7c3aed;
+      font-weight: 700;
+      font-size: clamp(1rem, 3cqw, 1.1rem);
+    }
+
+    @media (max-width: 600px) {
+      .stats-table {
+        font-size: clamp(0.75rem, 2.2vw, 0.85rem);
+      }
+
+      .stats-table th,
+      .stats-table td {
+        padding: clamp(6px, 1.5vw, 8px) clamp(4px, 1vw, 6px);
+      }
+
+      #refresh-session-btn {
+        padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px);
+        font-size: clamp(0.75rem, 2vw, 0.85rem);
+      }
+
+      #session-selector {
+        padding: clamp(4px, 1vw, 6px) clamp(8px, 2vw, 10px);
+        font-size: clamp(0.75rem, 2vw, 0.85rem);
+        max-width: 140px;
+        min-width: 100px;
+      }
+
+      .session-header-right {
+        gap: clamp(6px, 1.5vw, 8px);
+      }
+
+      .session-meta-inline {
+        font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+        gap: clamp(6px, 1.5vw, 8px);
+      }
+
+      .session-venue-badge {
+        padding: clamp(3px, 0.8vw, 5px) clamp(8px, 2vw, 10px);
+        font-size: clamp(0.8rem, 2.5vw, 0.85rem);
+      }
+    }
   </style>
 
   <!-- Favicon -->
@@ -759,8 +977,82 @@
 
 <body>
   <div class="form-container">
-    <h1>♟️ Chess Match Tracker</h1>
-    <p class="subtitle">2026</p>
+    <h1>♟️ Chess Tracker 2026</h1>
+    <p class="subtitle">New and improved with live session tracking</p>
+
+    <!-- Current Session Display -->
+    <div id="current-session-container">
+      <div class="session-header">
+        <div class="session-header-left" onclick="toggleSessionDisplay()">
+          <h3 style="margin: 0; font-size: clamp(1rem, 3.5cqw, 1.2rem);">Session Stats</h3>
+        </div>
+        <div class="session-header-right">
+          <select id="session-selector" onchange="onSessionChange()" onclick="event.stopPropagation()">
+            <option value="">Current Session</option>
+            <!-- Options populated by JavaScript -->
+          </select>
+          <button type="button" id="refresh-session-btn" onclick="loadCurrentSession(event)">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div id="session-content" class="session-content">
+        <!-- Loading State -->
+        <div id="session-loading" style="text-align: center; padding: 20px; display: none;">
+          Loading session data...
+        </div>
+
+        <!-- Data Display -->
+        <div id="session-data" style="display: none;">
+          <div class="session-meta">
+            <div class="session-meta-inline">
+              <span class="session-venue-badge" id="session-venue">-</span>
+              <span class="session-separator">•</span>
+              <span class="session-match-badge"><span id="session-match-count">0</span> matches</span>
+            </div>
+            <span id="session-start-time" style="display: none;"></span>
+            <span id="session-duration" style="display: none;"></span>
+          </div>
+
+          <div class="session-stats">
+            <h4 style="margin-top: 15px; margin-bottom: 10px;">Player Stats:</h4>
+            <table id="session-stats-table" class="stats-table">
+              <thead>
+                <tr>
+                  <th>Player</th>
+                  <th>M</th>
+                  <th>W</th>
+                  <th>L</th>
+                  <th>D</th>
+                  <th>🗡️</th>
+                  <th>😭</th>
+                </tr>
+              </thead>
+              <tbody id="session-stats-body">
+                <!-- Populated by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="session-summary">
+            <p id="session-summary-text" style="font-style: italic; color: rgba(248, 249, 250, 0.7); margin-top: 15px; font-size: clamp(0.9rem, 2.8cqw, 0.95rem);">
+              <!-- Populated by JavaScript -->
+            </p>
+          </div>
+        </div>
+
+        <!-- No Data State -->
+        <div id="session-no-data" style="text-align: center; padding: 20px; color: rgba(248, 249, 250, 0.7); display: none;">
+          No active session. Start logging matches to begin a new session!
+        </div>
+
+        <!-- Error State -->
+        <div id="session-error" style="text-align: center; padding: 20px; color: #ef4444; display: none;">
+          Failed to load session data. Please try again.
+        </div>
+      </div>
+    </div>
 
     <form onsubmit="return handleSubmit(event);" action="javascript:void(0)">
       <!-- Players Row -->
@@ -1613,6 +1905,10 @@
         submitBtn.disabled = false;
         submitBtn.style.opacity = '1';
 
+        // Refresh session display and dropdown after successful submission
+        loadSessionDropdown();
+        loadCurrentSession();
+
         document.getElementById('whitePlayer').focus();
       }, 2000);
     }
@@ -1642,6 +1938,267 @@
     window.toggleMulliganSection = toggleMulliganSection;
     window.updateMulliganLabels = updateMulliganLabels;
 
+    // ===== Current Session Display Functions =====
+
+    /**
+     * Load all sessions and populate dropdown
+     */
+    function loadSessionDropdown() {
+      google.script.run
+        .withSuccessHandler(function(sessions) {
+          console.log('Loaded sessions:', sessions);
+
+          var selector = document.getElementById('session-selector');
+
+          // Clear existing options except the first one (Current Session)
+          while (selector.options.length > 1) {
+            selector.remove(1);
+          }
+
+          // Add session options
+          if (sessions && sessions.length > 0) {
+            sessions.forEach(function(session) {
+              var option = document.createElement('option');
+              option.value = session.id;
+
+              // Format the option text: "1/27 Tue Night Fortaleza del..."
+              var startDate = new Date(session.startTime);
+              var dateStr = (startDate.getMonth() + 1) + '/' + startDate.getDate();
+              var dayOfWeek = getDayOfWeek(startDate);
+              var timeOfDay = getTimeOfDay(startDate);
+
+              // Truncate venue if too long
+              var venue = session.venue;
+              if (venue.length > 20) {
+                venue = venue.substring(0, 20) + '...';
+              }
+
+              option.textContent = dateStr + ' ' + dayOfWeek + ' ' + timeOfDay + ' ' + venue;
+              selector.appendChild(option);
+
+              console.log('Added session option:', session.id, option.textContent);
+            });
+          }
+        })
+        .withFailureHandler(function(err) {
+          console.error('Failed to load sessions:', err);
+        })
+        .getAllSessions();
+    }
+
+    /**
+     * Handle session dropdown change
+     */
+    function onSessionChange() {
+      var selector = document.getElementById('session-selector');
+      console.log('Session changed to:', selector.value, selector.selectedIndex);
+      loadCurrentSession();
+    }
+
+    /**
+     * Load current session data from server and display
+     */
+    function loadCurrentSession(event) {
+      if (event) {
+        event.stopPropagation(); // Prevent toggle when clicking refresh
+      }
+
+      // Get selected session ID from dropdown
+      var selector = document.getElementById('session-selector');
+      var selectedSessionId = selector.value || null;
+
+      console.log('Loading session with ID:', selectedSessionId);
+
+      // Show loading state
+      var loading = document.getElementById('session-loading');
+      var data = document.getElementById('session-data');
+      var noData = document.getElementById('session-no-data');
+      var error = document.getElementById('session-error');
+      var refreshBtn = document.getElementById('refresh-session-btn');
+
+      loading.style.display = 'block';
+      data.style.display = 'none';
+      noData.style.display = 'none';
+      error.style.display = 'none';
+      refreshBtn.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(function(sessionData) {
+          console.log('Received session data:', sessionData);
+
+          loading.style.display = 'none';
+          refreshBtn.disabled = false;
+
+          if (!sessionData) {
+            console.log('No session data returned');
+            noData.style.display = 'block';
+            return;
+          }
+
+          // Populate session metadata
+          document.getElementById('session-venue').textContent = sessionData.venue || 'Unknown';
+          document.getElementById('session-match-count').textContent = sessionData.matchCount || 0;
+
+          // Format start time
+          if (sessionData.startTime) {
+            var startDate = new Date(sessionData.startTime);
+            var now = new Date();
+            var diffMs = now - startDate;
+            var diffMins = Math.floor(diffMs / 60000);
+            var duration = formatDuration(diffMins);
+
+            document.getElementById('session-start-time').textContent = formatTime(startDate);
+            document.getElementById('session-duration').textContent = duration + ' ago';
+          }
+
+          // Populate player stats table
+          populateStatsTable(sessionData.playerStats);
+
+          // Format session summary
+          formatSessionSummary(sessionData);
+
+          data.style.display = 'block';
+        })
+        .withFailureHandler(function(err) {
+          loading.style.display = 'none';
+          error.style.display = 'block';
+          refreshBtn.disabled = false;
+          console.error('Failed to load session data:', err);
+        })
+        .getCurrentSessionData(selectedSessionId);
+    }
+
+    /**
+     * Toggle session display collapsed/expanded
+     */
+    function toggleSessionDisplay() {
+      var content = document.getElementById('session-content');
+      content.classList.toggle('collapsed');
+    }
+
+    /**
+     * Populate player stats table with data
+     */
+    function populateStatsTable(playerStats) {
+      var tbody = document.getElementById('session-stats-body');
+      tbody.innerHTML = '';
+
+      if (!playerStats || playerStats.length === 0) {
+        var row = tbody.insertRow();
+        var cell = row.insertCell(0);
+        cell.colSpan = 7;
+        cell.textContent = 'No player stats available';
+        cell.style.textAlign = 'center';
+        cell.style.fontStyle = 'italic';
+        cell.style.color = 'rgba(248, 249, 250, 0.5)';
+        return;
+      }
+
+      // Sort by wins descending
+      playerStats.sort(function(a, b) {
+        return b.wins - a.wins;
+      });
+
+      playerStats.forEach(function(stat) {
+        var row = tbody.insertRow();
+        row.insertCell(0).textContent = stat.player;
+        row.insertCell(1).textContent = stat.matches;
+        row.insertCell(2).textContent = stat.wins;
+        row.insertCell(3).textContent = stat.losses;
+        row.insertCell(4).textContent = stat.draws;
+        row.insertCell(5).textContent = stat.inflicted;
+        row.insertCell(6).textContent = stat.suffered;
+      });
+    }
+
+    /**
+     * Format last match text
+     */
+    function formatLastMatchText(lastMatch) {
+      if (!lastMatch) return;
+
+      var matchDate = new Date(lastMatch.timestamp);
+      var timeSince = formatTimeSince(matchDate);
+      var resultText = '';
+
+      if (lastMatch.winner === 'Draw') {
+        resultText = lastMatch.whitePlayer + ' (White) drew with ' + lastMatch.blackPlayer + ' (Black)';
+      } else {
+        var winner = (lastMatch.winner === 'White') ? lastMatch.whitePlayer : lastMatch.blackPlayer;
+        var loser = (lastMatch.winner === 'White') ? lastMatch.blackPlayer : lastMatch.whitePlayer;
+        resultText = winner + ' (' + lastMatch.winner + ') defeated ' + loser;
+      }
+
+      document.getElementById('session-last-match-text').textContent =
+        'Last match: ' + resultText + ' — ' + timeSince;
+    }
+
+    /**
+     * Format time as "3:45 PM"
+     */
+    function formatTime(date) {
+      var hours = date.getHours();
+      var minutes = date.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      minutes = minutes < 10 ? '0' + minutes : minutes;
+      return hours + ':' + minutes + ' ' + ampm;
+    }
+
+    /**
+     * Format duration in minutes as "2h 30m" or "45 mins"
+     */
+    function formatDuration(minutes) {
+      if (minutes < 60) {
+        return minutes + ' min' + (minutes !== 1 ? 's' : '');
+      }
+      var hours = Math.floor(minutes / 60);
+      var mins = minutes % 60;
+      return hours + 'h ' + mins + 'm';
+    }
+
+    /**
+     * Format time since as "just now", "15 mins ago", etc.
+     */
+    function formatTimeSince(date) {
+      var now = new Date();
+      var diffMs = now - date;
+      var diffMins = Math.floor(diffMs / 60000);
+
+      if (diffMins < 1) return 'just now';
+      if (diffMins < 60) return diffMins + ' min' + (diffMins !== 1 ? 's' : '') + ' ago';
+
+      var diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) {
+        var mins = diffMins % 60;
+        return diffHours + 'h ' + mins + 'm ago';
+      }
+
+      return 'over a day ago';
+    }
+
+    /**
+     * Get day of week abbreviation (Mon, Tue, Wed, etc.)
+     */
+    function getDayOfWeek(date) {
+      var days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      return days[date.getDay()];
+    }
+
+    /**
+     * Get time of day (Morning, Afternoon, Evening, Night)
+     */
+    function getTimeOfDay(date) {
+      var hour = date.getHours();
+      if (hour >= 5 && hour < 12) return 'Morning';
+      if (hour >= 12 && hour < 17) return 'Afternoon';
+      if (hour >= 17 && hour < 21) return 'Evening';
+      return 'Night';
+    }
+
+    // ===== End Current Session Display Functions =====
+
     // Mobile browser compatibility check
     function checkGoogleScriptAvailability() {
       setTimeout(function () {
@@ -1657,6 +2214,12 @@
     updateBrutalitySlider(0);
 
     checkGoogleScriptAvailability();
+
+    // Load current session data and populate dropdown on page load
+    window.addEventListener('load', function() {
+      loadSessionDropdown();
+      loadCurrentSession();
+    });
   </script>
 </body>
 

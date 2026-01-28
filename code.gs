@@ -567,7 +567,7 @@ function saveSessionSummary(sessionId) {
       pHeaderRange.setFontColor('white');
     }
 
-    // Upsert rows for each configured player
+    // Upsert rows for each configured player who actually played
     const config = getConfig();
     const players = config.players;
     const pData = pSheet.getDataRange().getValues();
@@ -579,10 +579,17 @@ function saveSessionSummary(sessionId) {
       const keyInflicted = (p.replace(/\s+/g,'_').toLowerCase() + '_inflicted');
       const keySuffered = (p.replace(/\s+/g,'_').toLowerCase() + '_suffered');
 
+      const matchesPlayed = stats[keyPlayed] || 0;
+
+      // Skip players who didn't play in this session
+      if (matchesPlayed === 0) {
+        return;
+      }
+
       const prowValues = [
         sessionId,
         p,
-        stats[keyPlayed] || 0,
+        matchesPlayed,
         stats[keyWins] || 0,
         stats[keyWins + '_as_white'] || 0,
         stats[keyWins + '_as_black'] || 0,
@@ -620,6 +627,345 @@ function saveSessionSummary(sessionId) {
     // Do not throw — session summary errors should not prevent match logging
     return { success: false, error: error.toString() };
   }
+}
+
+/**
+ * Get list of all sessions for dropdown selection
+ * @returns {Array} Array of session objects with id, venue, startTime, matchCount
+ */
+function getAllSessions() {
+  try {
+    var spreadsheet = getOrCreateSpreadsheet();
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+
+    if (!sessionsSheet || sessionsSheet.getLastRow() <= 1) {
+      return []; // No sessions yet
+    }
+
+    var data = sessionsSheet.getDataRange().getValues();
+    var headers = data[0];
+    var sessionIdCol = headers.indexOf('Session ID');
+    var startTimeCol = headers.indexOf('Start Time');
+    var matchesCol = headers.indexOf('Matches');
+
+    var sessions = [];
+
+    // Get venue from Matches sheet for each session
+    var matchesSheet = spreadsheet.getSheetByName('Matches');
+    var matchData = matchesSheet ? matchesSheet.getDataRange().getValues() : [];
+    var matchHeaders = matchData.length > 0 ? matchData[0] : [];
+    var matchSessionIdCol = matchHeaders.indexOf('Session ID');
+    var matchVenueCol = matchHeaders.indexOf('Venue');
+
+    for (var i = 1; i < data.length; i++) {
+      var sessionId = data[i][sessionIdCol];
+      var startTime = data[i][startTimeCol];
+      var matchCount = data[i][matchesCol];
+
+      // Find venue from first match of this session
+      var venue = 'Unknown';
+      if (matchesSheet && matchSessionIdCol !== -1 && matchVenueCol !== -1) {
+        for (var j = 1; j < matchData.length; j++) {
+          if (matchData[j][matchSessionIdCol] === sessionId) {
+            venue = matchData[j][matchVenueCol];
+            break;
+          }
+        }
+      }
+
+      sessions.push({
+        id: sessionId,
+        venue: venue,
+        startTime: startTime ? new Date(startTime).toISOString() : null,
+        matchCount: matchCount
+      });
+    }
+
+    // Sort by start time descending (most recent first)
+    sessions.sort(function(a, b) {
+      return new Date(b.startTime) - new Date(a.startTime);
+    });
+
+    return sessions;
+
+  } catch (error) {
+    logEvent('get_all_sessions_error', { error: error.toString() });
+    return [];
+  }
+}
+
+/**
+ * Get current session statistics
+ * Returns data about the most recent active session for display in the UI
+ * @param {string} sessionId - Optional session ID to fetch specific session
+ * @returns {Object|null} Current session data or null if no active session
+ */
+function getCurrentSessionData(sessionId) {
+  try {
+    logEvent('get_current_session_request', { requestedSessionId: sessionId });
+
+    var spreadsheet = getOrCreateSpreadsheet();
+    var matchesSheet = spreadsheet.getSheetByName('Matches');
+
+    if (!matchesSheet || matchesSheet.getLastRow() <= 1) {
+      return null; // No matches yet
+    }
+
+    var headers = matchesSheet.getRange(1, 1, 1, matchesSheet.getLastColumn()).getValues()[0];
+    var sessionIdCol = headers.indexOf('Session ID');
+    var venueCol = headers.indexOf('Venue');
+    var timestampCol = 0; // Always first column
+
+    if (sessionIdCol === -1) {
+      return null; // Session ID column doesn't exist yet
+    }
+
+    // If no sessionId provided, get the session ID from the most recent match
+    var currentSessionId = sessionId;
+    var lastMatchData;
+
+    if (!currentSessionId) {
+      var lastRow = matchesSheet.getLastRow();
+      lastMatchData = matchesSheet.getRange(lastRow, 1, 1, matchesSheet.getLastColumn()).getValues()[0];
+      currentSessionId = lastMatchData[sessionIdCol];
+
+      if (!currentSessionId) {
+        return null; // No session ID on last match
+      }
+    }
+
+    // Fetch session data from Sessions and SessionPlayers sheets
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+    var sessionPlayersSheet = spreadsheet.getSheetByName('SessionPlayers');
+
+    if (!sessionsSheet || !sessionPlayersSheet) {
+      // Fallback: compute stats directly from Matches sheet
+      return computeCurrentSessionFromMatches(matchesSheet, currentSessionId);
+    }
+
+    // Get session metadata from Sessions sheet
+    var sessionData = findSessionInSheet(sessionsSheet, currentSessionId);
+
+    // Get player stats from SessionPlayers sheet
+    var playerStats = findSessionPlayersInSheet(sessionPlayersSheet, currentSessionId);
+
+    // Get last match info - need to find last match for this specific session
+    if (!lastMatchData) {
+      // Find the last match for this session
+      var allData = matchesSheet.getDataRange().getValues();
+      for (var i = allData.length - 1; i >= 1; i--) {
+        if (allData[i][sessionIdCol] === currentSessionId) {
+          lastMatchData = allData[i];
+          break;
+        }
+      }
+    }
+
+    var lastMatchInfo = null;
+    if (lastMatchData) {
+      lastMatchInfo = {
+        timestamp: lastMatchData[timestampCol],
+        whitePlayer: lastMatchData[headers.indexOf('White Player')],
+        blackPlayer: lastMatchData[headers.indexOf('Black Player')],
+        winner: lastMatchData[headers.indexOf('Winner')],
+        venue: lastMatchData[venueCol]
+      };
+    }
+
+    // Convert Date objects to ISO strings for proper serialization
+    var result = {
+      sessionId: currentSessionId,
+      venue: lastMatchInfo ? lastMatchInfo.venue : 'Unknown',
+      startTime: sessionData.startTime ? new Date(sessionData.startTime).toISOString() : null,
+      matchCount: sessionData.matchCount,
+      playerStats: playerStats,
+      lastMatch: lastMatchInfo ? {
+        timestamp: lastMatchInfo.timestamp ? new Date(lastMatchInfo.timestamp).toISOString() : null,
+        whitePlayer: lastMatchInfo.whitePlayer,
+        blackPlayer: lastMatchInfo.blackPlayer,
+        winner: lastMatchInfo.winner,
+        venue: lastMatchInfo.venue
+      } : null
+    };
+
+    logEvent('get_current_session_success', {
+      sessionId: currentSessionId,
+      matchCount: sessionData.matchCount,
+      playerCount: playerStats.length,
+      hasStartTime: !!result.startTime,
+      hasLastMatch: !!result.lastMatch
+    });
+
+    return result;
+
+  } catch (error) {
+    logEvent('get_current_session_error', { error: error.toString(), stack: error.stack });
+    return null;
+  }
+}
+
+/**
+ * Helper: Find session data in Sessions sheet
+ * @param {Sheet} sheet - The Sessions sheet
+ * @param {string} sessionId - The session ID to find
+ * @returns {Object} Session metadata
+ */
+function findSessionInSheet(sheet, sessionId) {
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var sessionIdCol = headers.indexOf('Session ID');
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][sessionIdCol] === sessionId) {
+      return {
+        startTime: data[i][headers.indexOf('Start Time')],
+        endTime: data[i][headers.indexOf('End Time')],
+        matchCount: data[i][headers.indexOf('Matches')]
+      };
+    }
+  }
+  return { startTime: null, endTime: null, matchCount: 0 };
+}
+
+/**
+ * Helper: Find player stats in SessionPlayers sheet
+ * @param {Sheet} sheet - The SessionPlayers sheet
+ * @param {string} sessionId - The session ID to find
+ * @returns {Array} Array of player stat objects
+ */
+function findSessionPlayersInSheet(sheet, sessionId) {
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var sessionIdCol = headers.indexOf('Session ID');
+  var playerStats = [];
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][sessionIdCol] === sessionId) {
+      playerStats.push({
+        player: data[i][headers.indexOf('Player')],
+        matches: data[i][headers.indexOf('Matches')],
+        wins: data[i][headers.indexOf('Wins')],
+        losses: data[i][headers.indexOf('Losses')],
+        draws: data[i][headers.indexOf('Draws')],
+        inflicted: data[i][headers.indexOf('Inflicted')],
+        suffered: data[i][headers.indexOf('Suffered')]
+      });
+    }
+  }
+  return playerStats;
+}
+
+/**
+ * Fallback: Compute session stats directly from Matches sheet
+ * Used when Sessions/SessionPlayers sheets don't exist
+ * @param {Sheet} sheet - The Matches sheet
+ * @param {string} sessionId - The session ID to compute
+ * @returns {Object|null} Session data or null
+ */
+function computeCurrentSessionFromMatches(sheet, sessionId) {
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var config = getConfig();
+
+  // Find all matches with this session ID
+  var sessionMatches = [];
+  var sessionIdCol = headers.indexOf('Session ID');
+
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][sessionIdCol] === sessionId) {
+      sessionMatches.push(data[i]);
+    }
+  }
+
+  if (sessionMatches.length === 0) {
+    return null;
+  }
+
+  // Compute stats
+  var startTime = sessionMatches[0][0]; // First match timestamp
+  var venue = sessionMatches[0][headers.indexOf('Venue')];
+  var matchCount = sessionMatches.length;
+
+  // Compute per-player stats
+  var playerStats = {};
+  config.players.forEach(function(player) {
+    playerStats[player] = {
+      matches: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      inflicted: 0,
+      suffered: 0
+    };
+  });
+
+  sessionMatches.forEach(function(match) {
+    var whitePlayer = match[headers.indexOf('White Player')];
+    var blackPlayer = match[headers.indexOf('Black Player')];
+    var winner = match[headers.indexOf('Winner')];
+    var brutality = parseInt(match[headers.indexOf('Brutality')] || 0);
+
+    // Update match counts
+    if (playerStats[whitePlayer]) playerStats[whitePlayer].matches++;
+    if (playerStats[blackPlayer]) playerStats[blackPlayer].matches++;
+
+    // Update wins/losses/draws
+    if (winner === 'Draw') {
+      if (playerStats[whitePlayer]) {
+        playerStats[whitePlayer].draws++;
+        playerStats[whitePlayer].suffered += brutality;
+      }
+      if (playerStats[blackPlayer]) {
+        playerStats[blackPlayer].draws++;
+        playerStats[blackPlayer].suffered += brutality;
+      }
+    } else {
+      var winnerPlayer = (winner === 'White') ? whitePlayer : blackPlayer;
+      var loserPlayer = (winner === 'White') ? blackPlayer : whitePlayer;
+
+      if (playerStats[winnerPlayer]) {
+        playerStats[winnerPlayer].wins++;
+        playerStats[winnerPlayer].inflicted += brutality;
+      }
+      if (playerStats[loserPlayer]) {
+        playerStats[loserPlayer].losses++;
+        playerStats[loserPlayer].suffered += brutality;
+      }
+    }
+  });
+
+  // Convert to array
+  var playerStatsArray = [];
+  Object.keys(playerStats).forEach(function(player) {
+    if (playerStats[player].matches > 0) {
+      playerStatsArray.push({
+        player: player,
+        matches: playerStats[player].matches,
+        wins: playerStats[player].wins,
+        losses: playerStats[player].losses,
+        draws: playerStats[player].draws,
+        inflicted: playerStats[player].inflicted,
+        suffered: playerStats[player].suffered
+      });
+    }
+  });
+
+  // Convert Date objects to ISO strings for proper serialization
+  var lastMatchIndex = sessionMatches.length - 1;
+  return {
+    sessionId: sessionId,
+    venue: venue,
+    startTime: startTime ? new Date(startTime).toISOString() : null,
+    matchCount: matchCount,
+    playerStats: playerStatsArray,
+    lastMatch: {
+      timestamp: sessionMatches[lastMatchIndex][0] ? new Date(sessionMatches[lastMatchIndex][0]).toISOString() : null,
+      whitePlayer: sessionMatches[lastMatchIndex][headers.indexOf('White Player')],
+      blackPlayer: sessionMatches[lastMatchIndex][headers.indexOf('Black Player')],
+      winner: sessionMatches[lastMatchIndex][headers.indexOf('Winner')],
+      venue: venue
+    }
+  };
 }
 
 /**

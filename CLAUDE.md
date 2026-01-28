@@ -193,8 +193,34 @@ Agent guidance for working on the `chess-tracker` Google Apps Script project.
 
 Key facts:
 - Architecture: single-file client (`index.html`) + server (`code.gs`) deployed as a GAS web app.
-- Important server functions: `addRow(formData)`, `computeSessionStats(sessionId)`, `saveSessionSummary(sessionId)`, `getOrCreateSpreadsheet()`.
+- Important server functions: `addRow(formData)`, `computeSessionStats(sessionId)`, `saveSessionSummary(sessionId)`, `getOrCreateSpreadsheet()`, `getCurrentSessionData(sessionId)`, `getAllSessions()`.
 - Logging: use `logEvent(eventName, data)` for structured logs; follow existing event naming.
+
+### Current Session Display Feature
+
+The chess tracker includes a real-time session statistics display at the top of the form:
+
+**Server Functions:**
+- `getCurrentSessionData(sessionId)`: Returns session statistics for a specific session ID, or the most recent session if not specified. Queries Sessions/SessionPlayers sheets
+- `getAllSessions()`: Returns array of all sessions with id, venue, startTime, and matchCount for dropdown population
+- `findSessionInSheet(sheet, sessionId)`: Helper to find session metadata from Sessions sheet
+- `findSessionPlayersInSheet(sheet, sessionId)`: Helper to find player stats from SessionPlayers sheet
+- `computeCurrentSessionFromMatches(sheet, sessionId)`: Fallback computation when summary sheets don't exist
+
+**Client Features:**
+- Session dropdown selector to view current or historical sessions (formatted as "date day time-of-day venue", e.g., "1/27 Tue Night Fortaleza del...")
+- Collapsible section showing venue, start time, match count
+- Player stats table (sorted by wins) with compact headers: M (matches), W (wins), L (losses), D (draws), 🗡️ (inflicted), 😭 (suffered)
+- Last match summary with time elapsed
+- Manual refresh button
+- Auto-refresh after successful form submission (refreshes both dropdown and current view)
+- Loading, error, and no-data states
+
+**Design:**
+- Expanded by default (user can collapse via header click)
+- Consistent dark theme with purple accents (#7c3aed)
+- Responsive table layout for mobile devices
+- Non-blocking: errors don't prevent form usage
 
 Data model and sheets:
 - `Matches` is the primary source-of-truth. Columns include `Timestamp`, `White Player`, `Black Player`, `Winner`, `Game Ending`, `Time Limit`, `Venue`, `Brutality`, `Notes`, `Picture URL`, `White Mulligan`, `Black Mulligan`, `Session ID`.

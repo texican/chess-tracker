@@ -28,6 +28,82 @@ fi
 echo "📤 Pushing files to Google Apps Script..."
 clasp push --force
 
+echo "🧹 Cleaning up old deployments..."
+# Get full deployment list with descriptions
+DEPLOYMENTS_FULL=$(clasp deployments)
+
+# Extract deployment IDs and their timestamps from descriptions
+declare -a DEPLOYMENT_DATA
+while IFS= read -r line; do
+    if [[ $line =~ (AK[a-zA-Z0-9_-]+).*([0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}) ]]; then
+        dep_id="${BASH_REMATCH[1]}"
+        timestamp="${BASH_REMATCH[2]}"
+        # Convert to Unix epoch for comparison
+        epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$timestamp" "+%s" 2>/dev/null || echo "0")
+        DEPLOYMENT_DATA+=("$epoch|$dep_id|$timestamp")
+    fi
+done <<< "$DEPLOYMENTS_FULL"
+
+# Count deployments
+DEPLOYMENT_COUNT=${#DEPLOYMENT_DATA[@]}
+
+if [ "$DEPLOYMENT_COUNT" -gt 1 ]; then
+    echo "📊 Found $DEPLOYMENT_COUNT deployments"
+
+    # Sort by epoch (newest first)
+    IFS=$'\n' SORTED_DEPLOYMENTS=($(sort -t'|' -k1 -rn <<<"${DEPLOYMENT_DATA[*]}"))
+    unset IFS
+
+    # Get the most recent deployment
+    MOST_RECENT="${SORTED_DEPLOYMENTS[0]}"
+    MOST_RECENT_EPOCH=$(echo "$MOST_RECENT" | cut -d'|' -f1)
+    MOST_RECENT_ID=$(echo "$MOST_RECENT" | cut -d'|' -f2)
+    MOST_RECENT_TIME=$(echo "$MOST_RECENT" | cut -d'|' -f3)
+
+    echo "🔹 Most recent: $MOST_RECENT_ID ($MOST_RECENT_TIME)"
+
+    # Find the first deployment that's at least 8 hours (28800 seconds) older
+    STABLE_ID=""
+    STABLE_TIME=""
+    EIGHT_HOURS=28800
+
+    for deployment in "${SORTED_DEPLOYMENTS[@]:1}"; do
+        epoch=$(echo "$deployment" | cut -d'|' -f1)
+        dep_id=$(echo "$deployment" | cut -d'|' -f2)
+        timestamp=$(echo "$deployment" | cut -d'|' -f3)
+
+        age_diff=$((MOST_RECENT_EPOCH - epoch))
+
+        if [ "$age_diff" -ge "$EIGHT_HOURS" ]; then
+            STABLE_ID="$dep_id"
+            STABLE_TIME="$timestamp"
+            echo "🔹 Stable version: $STABLE_ID ($STABLE_TIME) - $((age_diff / 3600))h older"
+            break
+        fi
+    done
+
+    # Delete all deployments except most recent and stable
+    DELETED_COUNT=0
+    for deployment in "${SORTED_DEPLOYMENTS[@]}"; do
+        dep_id=$(echo "$deployment" | cut -d'|' -f2)
+        timestamp=$(echo "$deployment" | cut -d'|' -f3)
+
+        if [ "$dep_id" != "$MOST_RECENT_ID" ] && [ "$dep_id" != "$STABLE_ID" ]; then
+            echo "🗑️  Deleting: $dep_id ($timestamp)"
+            clasp undeploy "$dep_id" || echo "⚠️  Could not delete $dep_id"
+            ((DELETED_COUNT++))
+        fi
+    done
+
+    if [ "$DELETED_COUNT" -gt 0 ]; then
+        echo "✅ Deleted $DELETED_COUNT old deployment(s)"
+    else
+        echo "📊 No old deployments to delete"
+    fi
+else
+    echo "📊 Found $DEPLOYMENT_COUNT deployment(s), no cleanup needed"
+fi
+
 echo "🔧 Creating new deployment..."
 DEPLOYMENT_OUTPUT=$(clasp deploy --description "Deployment $(date '+%Y-%m-%d %H:%M:%S')")
 echo "$DEPLOYMENT_OUTPUT"
@@ -37,6 +113,7 @@ DEPLOYMENT_ID=$(echo "$DEPLOYMENT_OUTPUT" | grep -oE 'AK[a-zA-Z0-9_-]+' | head -
 
 if [ -z "$DEPLOYMENT_ID" ]; then
     echo "❌ Error: Could not extract deployment ID"
+    echo "💡 Try manually checking deployments with: clasp deployments"
     exit 1
 fi
 
