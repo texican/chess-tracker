@@ -155,14 +155,235 @@ function getConfig() {
  */
 function doGet(e) {
   try {
+    // Check if admin panel is requested
+    if (e.parameter && e.parameter.admin === 'true') {
+      return serveAdminPanel(e);
+    }
+
+    // Regular form
     logEvent('form_served', { parameters: e.parameter, userAgent: e.parameter.userAgent });
-    
+
     return HtmlService.createHtmlOutputFromFile('index')
       .setTitle('Chess Game Tracker')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
-      
+
   } catch (error) {
     handleError('form_serve', error);
+  }
+}
+
+// ===== ADMIN PANEL AUTHENTICATION =====
+
+/**
+ * Serve admin panel - owner only
+ * @param {Object} e - Event object with request parameters
+ * @returns {HtmlOutput} The admin panel or access denied page
+ */
+function serveAdminPanel(e) {
+  // Check if current user is the script owner
+  if (!isScriptOwner()) {
+    logEvent('admin_access_denied', {
+      user: Session.getEffectiveUser().getEmail()
+    });
+
+    return HtmlService.createHtmlOutput(
+      '<h1>Access Denied</h1>' +
+      '<p>Admin panel is only accessible to the script owner.</p>' +
+      '<p><a href="?">← Back to Form</a></p>'
+    ).setTitle('Access Denied');
+  }
+
+  // User is owner - serve admin panel
+  logEvent('admin_panel_served', {
+    user: Session.getEffectiveUser().getEmail()
+  });
+
+  return HtmlService.createHtmlOutputFromFile('admin-panel')
+    .setTitle('Admin Panel - Chess Tracker')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+/**
+ * Check if current user is the script owner
+ * @returns {boolean} True if current user is owner
+ */
+function isScriptOwner() {
+  try {
+    var userEmail = Session.getEffectiveUser().getEmail();
+    var ownerEmail = getScriptOwnerEmail();
+
+    return userEmail.toLowerCase() === ownerEmail.toLowerCase();
+  } catch (error) {
+    logEvent('owner_check_error', { error: error.toString() });
+    return false;
+  }
+}
+
+/**
+ * Get script owner's email
+ * Priority: Script Properties > ActiveUser > EffectiveUser
+ * @returns {string} Owner email address
+ */
+function getScriptOwnerEmail() {
+  var props = PropertiesService.getScriptProperties();
+
+  // Option 1: Configured owner email (highest priority)
+  var configuredOwner = props.getProperty('ADMIN_OWNER_EMAIL');
+  if (configuredOwner) {
+    return configuredOwner;
+  }
+
+  // Option 2: Try to get active user
+  try {
+    var activeUser = Session.getActiveUser().getEmail();
+    if (activeUser) return activeUser;
+  } catch (e) {
+    // May not be available in all contexts
+  }
+
+  // Option 3: Fall back to effective user
+  return Session.getEffectiveUser().getEmail();
+}
+
+// ===== ADMIN PANEL API =====
+
+/**
+ * Admin API: Get all configuration
+ * Owner-only access
+ * @returns {Object} Configuration object with players, venues, colors, emojis, etc.
+ */
+function adminGetConfig() {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  var props = PropertiesService.getScriptProperties();
+  var config = getConfig(); // Reuse existing function
+
+  // Handle legacy color/emoji mappings (Player1, Player2, etc.) by converting to actual player names
+  // If a player doesn't have a color/emoji, try to match by position (Player1 -> first player, etc.)
+  var mappedColors = {};
+  var mappedEmojis = {};
+
+  for (var i = 0; i < config.players.length; i++) {
+    var playerName = config.players[i];
+
+    // Try direct lookup first
+    var color = config.playerColors[playerName];
+    var emoji = config.playerEmojis[playerName];
+
+    // If not found, try legacy Player1, Player2, etc. format by position
+    if (!color) {
+      var legacyKey = 'Player' + (i + 1);
+      color = config.playerColors[legacyKey] || '#7c3aed';
+    }
+
+    if (!emoji) {
+      var legacyKey = 'Player' + (i + 1);
+      emoji = config.playerEmojis[legacyKey] || '⚪';
+    }
+
+    mappedColors[playerName] = color;
+    mappedEmojis[playerName] = emoji;
+  }
+
+  return {
+    players: config.players,
+    playerColors: mappedColors,
+    playerEmojis: mappedEmojis,
+    venues: config.venues,
+    mulliganVenues: config.mulliganVenues,
+    sessionGapHours: config.sessionGapHours,
+    spreadsheetId: props.getProperty('SPREADSHEET_ID') || ''
+  };
+}
+
+/**
+ * Admin API: Save configuration
+ * Owner-only access
+ * @param {Object} newConfig - New configuration to save
+ * @returns {Object} Success response
+ */
+function adminSaveConfig(newConfig) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  try {
+    var props = PropertiesService.getScriptProperties();
+
+    // Validate and save players
+    if (newConfig.players && Array.isArray(newConfig.players)) {
+      var playersStr = newConfig.players
+        .map(function(p) { return p.trim(); })
+        .filter(function(p) { return p.length > 0; })
+        .join(',');
+
+      if (playersStr.length === 0) {
+        throw new Error('At least one player is required');
+      }
+
+      props.setProperty('PLAYERS', playersStr);
+    }
+
+    // Validate and save player colors
+    if (newConfig.playerColors && typeof newConfig.playerColors === 'object') {
+      var colorsArray = [];
+      for (var player in newConfig.playerColors) {
+        colorsArray.push(player + ':' + newConfig.playerColors[player]);
+      }
+      props.setProperty('PLAYER_COLORS', colorsArray.join(','));
+    }
+
+    // Validate and save player emojis
+    if (newConfig.playerEmojis && typeof newConfig.playerEmojis === 'object') {
+      var emojisArray = [];
+      for (var player in newConfig.playerEmojis) {
+        emojisArray.push(player + ':' + newConfig.playerEmojis[player]);
+      }
+      props.setProperty('PLAYER_EMOJIS', emojisArray.join(','));
+    }
+
+    // Validate and save venues
+    if (newConfig.venues && Array.isArray(newConfig.venues)) {
+      var venuesStr = newConfig.venues
+        .map(function(v) { return v.trim(); })
+        .filter(function(v) { return v.length > 0; })
+        .join(',');
+
+      if (venuesStr.length === 0) {
+        throw new Error('At least one venue is required');
+      }
+
+      props.setProperty('VENUES', venuesStr);
+    }
+
+    // Validate and save mulligan venues
+    if (newConfig.mulliganVenues && Array.isArray(newConfig.mulliganVenues)) {
+      var mulliganStr = newConfig.mulliganVenues.join(',');
+      props.setProperty('MULLIGAN_VENUES', mulliganStr);
+    }
+
+    // Validate and save session gap hours
+    if (newConfig.sessionGapHours) {
+      var hours = parseInt(newConfig.sessionGapHours, 10);
+      if (isNaN(hours) || hours <= 0 || hours >= 100) {
+        throw new Error('Session gap hours must be between 1 and 99');
+      }
+      props.setProperty('SESSION_GAP_HOURS', hours.toString());
+    }
+
+    logEvent('admin_config_saved', {
+      players: newConfig.players ? newConfig.players.length : 0,
+      venues: newConfig.venues ? newConfig.venues.length : 0,
+      user: Session.getEffectiveUser().getEmail()
+    });
+
+    return { success: true, message: 'Configuration saved successfully' };
+
+  } catch (error) {
+    logEvent('admin_config_save_error', { error: error.toString() });
+    throw error;
   }
 }
 

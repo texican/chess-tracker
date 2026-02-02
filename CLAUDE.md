@@ -443,8 +443,132 @@ Chess Game Data Spreadsheet Columns:
 
 1. Copy `code.gs` to Google Apps Script project
 2. Copy `index.html` to Google Apps Script as HTML file named "index"
-3. Deploy as Web App with "Execute as: Me" and "Access: Anyone"
-4. Test form submission - should display success message and reset form
+3. Copy `admin-panel.html` to Google Apps Script as HTML file named "admin-panel"
+4. Deploy as Web App with "Execute as: Me" and "Access: Anyone"
+5. Test form submission - should display success message and reset form
+6. Test admin panel access with `?admin=true` parameter
+
+## Admin Panel
+
+The chess tracker includes an owner-only admin panel for managing configuration without accessing Google Apps Script settings directly.
+
+### Architecture
+
+**Files:**
+- `code.gs` - Admin authentication and API functions (`serveAdminPanel`, `isScriptOwner`, `adminGetConfig`, `adminSaveConfig`)
+- `admin-panel.html` - Complete standalone admin interface with inline CSS and JavaScript
+
+**Access Control:**
+- URL parameter: `?admin=true` routes to admin panel instead of regular form
+- Owner verification: `isScriptOwner()` checks Session.getEffectiveUser() against script owner
+- Every admin API function validates ownership before executing
+- Non-owners see "Access Denied" page with link back to form
+
+**Authentication Flow:**
+```
+doGet(e) checks e.parameter.admin === 'true'
+  → serveAdminPanel(e) called
+    → isScriptOwner() validates user
+      → getScriptOwnerEmail() returns owner email (Script Properties > ActiveUser > EffectiveUser)
+        → Match: Serve admin-panel.html
+        → No match: Serve access denied HTML
+```
+
+### MVP Features (Configuration Tab)
+
+**Players Management:**
+- Add/remove/reorder players with drag-like up/down buttons
+- Color picker for each player (hex color)
+- Emoji display for each player
+- Real-time UI updates
+- Minimum 1 player enforced
+
+**Venues Management:**
+- Add/remove venues
+- Mulligan venue checkbox for each venue
+- Minimum 1 venue enforced
+
+**Session Settings:**
+- Session gap hours input (1-99 range)
+- Validation and error messages
+
+**Save/Load:**
+- Load configuration from Script Properties via `adminGetConfig()`
+- Save configuration to Script Properties via `adminSaveConfig()`
+- Server-side validation (minimum players/venues, valid ranges)
+- Success/error alert messages
+- Loading states during server calls
+
+### Admin API Functions
+
+All functions check `isScriptOwner()` first, throw error if unauthorized.
+
+**adminGetConfig():**
+- Returns configuration object with players, playerColors, playerEmojis, venues, mulliganVenues, sessionGapHours
+- Reuses existing `getConfig()` function
+- No parameters
+
+**adminSaveConfig(newConfig):**
+- Validates and saves configuration to Script Properties
+- Parameters: Object with players array, playerColors object, playerEmojis object, venues array, mulliganVenues array, sessionGapHours number
+- Validation: Players/venues arrays trimmed and filtered, session gap 1-99, minimum 1 player and 1 venue
+- Returns: `{ success: true, message: 'Configuration saved successfully' }`
+- Logs all saves with user email to `logEvent()`
+
+### Future Enhancements
+
+**Phase 2 - Sessions & Data (Planned):**
+- Sessions tab: View sessions with pagination, recompute stats, view details
+- Data tab: Export CSV/JSON, recompute all sessions, backup tools
+
+**Phase 3 - Analytics & Audit (Planned):**
+- Analytics dashboard: Overall stats, player rankings, trends
+- Audit log: Track all admin actions with timestamps
+
+### Implementation Patterns
+
+**Server-side (code.gs):**
+- Vanilla JavaScript with `var` declarations
+- Try/catch blocks around all operations
+- Structured logging with `logEvent()` for all admin actions
+- PropertiesService for configuration persistence
+
+**Client-side (admin-panel.html):**
+- Single HTML file with inline CSS and JavaScript
+- `google.script.run` with callbacks (no async/await)
+- `var` declarations, basic DOM manipulation
+- Dark theme (#0a0a0a background, #7c3aed accents)
+- Responsive sizing with `clamp()`
+- Mobile-friendly with horizontal scroll tabs
+
+**Security:**
+- Google OAuth authentication (Session.getEffectiveUser())
+- Owner check on every admin function
+- Server-side input validation
+- All admin actions logged with user email
+- No client-side secrets
+
+### Testing Admin Panel
+
+**Access Control:**
+- Owner can access `?admin=true`
+- Non-owner sees "Access Denied" page
+- Access attempts logged in execution logs
+
+**Configuration Management:**
+- Load configuration successfully
+- Add/remove players and venues
+- Reorder players
+- Change colors
+- Toggle mulligan venues
+- Save configuration and verify persistence
+- Validation errors shown for invalid inputs
+
+**Integration:**
+- Configuration changes immediately available in main form
+- New players appear in dropdowns
+- New venues appear in venue dropdown
+- Session gap affects new session creation
 
 ## Data Storage
 

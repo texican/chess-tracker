@@ -28,6 +28,77 @@ clasp login
 
 Note: `deploy.sh` uses `clasp` and will push `code.gs`/`index.html`/`appsscript.json` and create/update a web deployment.
 
+## Admin Panel
+
+The chess tracker includes an owner-only admin panel for managing configuration without accessing Google Apps Script settings.
+
+### Accessing the Admin Panel
+
+**Regular Form:** `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec`
+**Admin Panel:** `https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?admin=true`
+
+### Authentication
+
+- **Owner-only access:** Only the script owner can access the admin panel
+- **Google OAuth:** Authentication handled automatically via Google account
+- **No passwords required:** Uses Session.getEffectiveUser() for verification
+- **Optional configuration:** Set `ADMIN_OWNER_EMAIL` in Script Properties to explicitly specify the admin email
+
+### Features (MVP)
+
+#### Configuration Tab ⚙️
+- **Players Management:**
+  - Add/remove/reorder players
+  - Customize player colors (color picker)
+  - View player emojis
+- **Venues Management:**
+  - Add/remove venues
+  - Toggle mulligan venue settings
+- **Session Settings:**
+  - Adjust session gap hours (1-99)
+- **Validation:**
+  - Minimum 1 player and 1 venue required
+  - Session gap hours must be 1-99
+  - Empty player/venue names filtered out
+
+#### Coming Soon
+- **Sessions Tab** 📊 - View and manage session data with pagination
+- **Data Tab** 💾 - Export data (CSV/JSON), recompute statistics
+- **Analytics Tab** 📈 - Overall statistics dashboard
+- **Audit Log Tab** 📋 - Track admin actions
+
+### Usage
+
+1. **Access admin panel** with `?admin=true` parameter
+2. **Edit configuration:**
+   - Modify players, venues, or session settings
+   - Changes are validated in real-time
+3. **Save configuration:**
+   - Click "Save Configuration" button
+   - Changes persist to Script Properties
+   - Immediately available in the main form
+4. **Reset:** Click "Reset" to reload current configuration from server
+
+### Security
+
+- Owner verification on every admin API call
+- All admin actions logged with user email
+- Input validation on server-side
+- Non-owners see "Access Denied" page
+- No sensitive data exposed in client
+
+### Troubleshooting
+
+**"Access Denied" error:**
+- Verify you're logged into the correct Google account
+- Ensure you own the Apps Script project
+- Optional: Set `ADMIN_OWNER_EMAIL` in Script Properties
+
+**Changes not appearing in form:**
+- Hard refresh the form page (Ctrl+Shift+R or Cmd+Shift+R)
+- Clear browser cache if needed
+- Verify changes saved successfully (look for success message)
+
 ## Testing
 
 ### Automated Testing

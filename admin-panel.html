@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Chess Tracker</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: #0a0a0a;
+      color: #ffffff;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .admin-header {
+      background: #1a1a1a;
+      border-bottom: 2px solid #7c3aed;
+      padding: clamp(15px, 3cqh, 25px) clamp(20px, 4cqw, 40px);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+
+    .admin-header h1 {
+      font-size: clamp(1.2rem, 3.5cqw, 1.8rem);
+      color: #7c3aed;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .admin-header-right {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      font-size: clamp(0.85rem, 2cqw, 0.95rem);
+    }
+
+    .admin-header-right a {
+      color: #7c3aed;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .admin-header-right a:hover {
+      color: #9f67ff;
+    }
+
+    /* Navigation */
+    .admin-nav {
+      background: #111111;
+      border-bottom: 1px solid #333;
+      display: flex;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-nav::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .admin-nav::-webkit-scrollbar-track {
+      background: #0a0a0a;
+    }
+
+    .admin-nav::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 3px;
+    }
+
+    .admin-nav button {
+      background: none;
+      border: none;
+      color: #aaa;
+      padding: clamp(12px, 2cqh, 18px) clamp(20px, 3cqw, 30px);
+      cursor: pointer;
+      font-size: clamp(0.85rem, 2cqw, 0.95rem);
+      white-space: nowrap;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
+      font-weight: 500;
+    }
+
+    .admin-nav button:hover {
+      background: #1a1a1a;
+      color: #fff;
+    }
+
+    .admin-nav button.active {
+      background: #1a1a1a;
+      color: #7c3aed;
+      border-bottom-color: #7c3aed;
+    }
+
+    .admin-nav button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* Content */
+    .admin-content {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: clamp(20px, 4cqw, 40px);
+    }
+
+    .admin-section {
+      background: #1a1a1a;
+      border-radius: 12px;
+      padding: clamp(20px, 4cqw, 35px);
+      margin-bottom: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      display: none;
+    }
+
+    .admin-section.active {
+      display: block;
+    }
+
+    .admin-section h2 {
+      margin-bottom: clamp(20px, 3cqh, 30px);
+      color: #7c3aed;
+      font-size: clamp(1.3rem, 3cqw, 1.6rem);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Alert Messages */
+    .alert {
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+      display: none;
+    }
+
+    .alert.show {
+      display: block;
+    }
+
+    .alert-success {
+      background: rgba(16, 185, 129, 0.15);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .alert-error {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    /* Form Groups */
+    .form-group {
+      margin-bottom: clamp(25px, 4cqh, 35px);
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 10px;
+      font-weight: 600;
+      color: #e0e0e0;
+      font-size: clamp(0.9rem, 2cqw, 1rem);
+    }
+
+    .form-group small {
+      display: block;
+      margin-top: 8px;
+      color: #888;
+      font-size: 0.85rem;
+    }
+
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="color"] {
+      width: 100%;
+      padding: 12px 15px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #7c3aed;
+    }
+
+    .form-group input[type="color"] {
+      padding: 5px;
+      height: 50px;
+      cursor: pointer;
+    }
+
+    /* Player and Venue Lists */
+    .player-list,
+    .venue-list {
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      max-height: 500px;
+      overflow-y: auto;
+      background: #0a0a0a;
+    }
+
+    .player-list::-webkit-scrollbar,
+    .venue-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .player-list::-webkit-scrollbar-track,
+    .venue-list::-webkit-scrollbar-track {
+      background: #1a1a1a;
+      border-radius: 4px;
+    }
+
+    .player-list::-webkit-scrollbar-thumb,
+    .venue-list::-webkit-scrollbar-thumb {
+      background: #333;
+      border-radius: 4px;
+    }
+
+    .list-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto auto auto auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #222;
+      transition: background 0.2s;
+    }
+
+    .list-item:last-child {
+      border-bottom: none;
+    }
+
+    .list-item:hover {
+      background: #111;
+    }
+
+    .list-item-number {
+      color: #666;
+      font-weight: 500;
+      min-width: 25px;
+    }
+
+    .list-item input[type="text"] {
+      flex: 1;
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+    }
+
+    .list-item input[type="color"] {
+      width: 50px;
+      height: 35px;
+      padding: 2px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .list-item-emoji {
+      width: 60px;
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+
+    .venue-item {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-bottom: 1px solid #222;
+    }
+
+    .venue-item:last-child {
+      border-bottom: none;
+    }
+
+    .venue-item:hover {
+      background: #111;
+    }
+
+    .venue-item input[type="text"] {
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.9rem;
+    }
+
+    .venue-item label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+      color: #aaa;
+      font-size: 0.85rem;
+      margin: 0;
+      font-weight: normal;
+    }
+
+    .venue-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: clamp(10px, 2cqh, 13px) clamp(18px, 3cqw, 24px);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: clamp(0.9rem, 2cqw, 0.95rem);
+      font-weight: 600;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #7c3aed;
+      color: white;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: #6d28d9;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+    }
+
+    .btn-secondary {
+      background: #333;
+      color: white;
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: #444;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .btn-danger:hover:not(:disabled) {
+      background: #dc2626;
+    }
+
+    .btn-small {
+      padding: 6px 12px;
+      font-size: 0.85rem;
+    }
+
+    .btn-icon {
+      padding: 6px 10px;
+      background: #222;
+      color: #aaa;
+      min-width: 35px;
+      justify-content: center;
+    }
+
+    .btn-icon:hover:not(:disabled) {
+      background: #333;
+      color: #fff;
+    }
+
+    /* Button Group */
+    .button-group {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 25px;
+    }
+
+    /* Loading Spinner */
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: #fff;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Coming Soon */
+    .coming-soon {
+      text-align: center;
+      padding: 80px 20px;
+      color: #666;
+    }
+
+    .coming-soon-icon {
+      font-size: 4rem;
+      margin-bottom: 20px;
+      opacity: 0.3;
+    }
+
+    .coming-soon h3 {
+      font-size: 1.5rem;
+      color: #888;
+      margin-bottom: 10px;
+    }
+
+    .coming-soon p {
+      font-size: 1rem;
+      color: #666;
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .admin-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .admin-nav button {
+        padding: 12px 15px;
+        font-size: 0.85rem;
+      }
+
+      .list-item {
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+      }
+
+      .list-item-controls {
+        grid-column: 1 / -1;
+        display: flex;
+        gap: 8px;
+        justify-content: flex-end;
+      }
+
+      .venue-item {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+
+      .button-group {
+        flex-direction: column;
+      }
+
+      .button-group .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <div class="admin-header">
+    <h1>🛡️ Chess Tracker Admin Panel</h1>
+    <div class="admin-header-right">
+      <span id="admin-user">👤 Loading...</span>
+      <span>|</span>
+      <a href="?">← Back to Form</a>
+    </div>
+  </div>
+
+  <!-- Navigation Tabs -->
+  <div class="admin-nav">
+    <button class="active" onclick="showSection('config')">⚙️ Configuration</button>
+    <button disabled onclick="showSection('sessions')">📊 Sessions</button>
+    <button disabled onclick="showSection('data')">💾 Data</button>
+    <button disabled onclick="showSection('analytics')">📈 Analytics</button>
+    <button disabled onclick="showSection('audit')">📋 Audit Log</button>
+  </div>
+
+  <!-- Content Area -->
+  <div class="admin-content">
+
+    <!-- Configuration Section -->
+    <div id="section-config" class="admin-section active">
+      <h2>⚙️ Configuration</h2>
+
+      <div id="config-alert" class="alert"></div>
+
+      <!-- Players Section -->
+      <div class="form-group">
+        <label>Players:</label>
+        <div id="player-list" class="player-list">
+          <!-- Populated dynamically -->
+        </div>
+        <button class="btn btn-secondary btn-small" onclick="addPlayer()" style="margin-top: 12px;">+ Add Player</button>
+      </div>
+
+      <!-- Venues Section -->
+      <div class="form-group">
+        <label>Venues:</label>
+        <div id="venue-list" class="venue-list">
+          <!-- Populated dynamically -->
+        </div>
+        <button class="btn btn-secondary btn-small" onclick="addVenue()" style="margin-top: 12px;">+ Add Venue</button>
+      </div>
+
+      <!-- Session Gap Hours -->
+      <div class="form-group">
+        <label>Session Gap Hours:</label>
+        <input type="number" id="session-gap-hours" min="1" max="99" value="6">
+        <small>Hours between matches to start a new session</small>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="button-group">
+        <button class="btn btn-primary" id="save-btn" onclick="saveConfiguration()">
+          <span id="save-text">Save Configuration</span>
+        </button>
+        <button class="btn btn-secondary" onclick="loadConfiguration()">Reset</button>
+      </div>
+    </div>
+
+    <!-- Sessions Section -->
+    <div id="section-sessions" class="admin-section">
+      <h2>📊 Sessions</h2>
+      <div class="coming-soon">
+        <div class="coming-soon-icon">📊</div>
+        <h3>Coming Soon</h3>
+        <p>Session management will be available in the next release.</p>
+      </div>
+    </div>
+
+    <!-- Data Management Section -->
+    <div id="section-data" class="admin-section">
+      <h2>💾 Data Management</h2>
+      <div class="coming-soon">
+        <div class="coming-soon-icon">💾</div>
+        <h3>Coming Soon</h3>
+        <p>Data export and management tools will be available in the next release.</p>
+      </div>
+    </div>
+
+    <!-- Analytics Section -->
+    <div id="section-analytics" class="admin-section">
+      <h2>📈 Analytics</h2>
+      <div class="coming-soon">
+        <div class="coming-soon-icon">📈</div>
+        <h3>Coming Soon</h3>
+        <p>Analytics dashboard will be available in the next release.</p>
+      </div>
+    </div>
+
+    <!-- Audit Log Section -->
+    <div id="section-audit" class="admin-section">
+      <h2>📋 Audit Log</h2>
+      <div class="coming-soon">
+        <div class="coming-soon-icon">📋</div>
+        <h3>Coming Soon</h3>
+        <p>Audit log will be available in the next release.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Global state
+    var currentConfig = {};
+    var isSaving = false;
+
+    // Initialize on page load
+    window.addEventListener('load', function() {
+      loadConfiguration();
+    });
+
+    // ===== NAVIGATION =====
+
+    function showSection(section) {
+      // Update nav buttons
+      var buttons = document.querySelectorAll('.admin-nav button');
+      for (var i = 0; i < buttons.length; i++) {
+        buttons[i].classList.remove('active');
+      }
+      event.target.classList.add('active');
+
+      // Update sections
+      var sections = document.querySelectorAll('.admin-section');
+      for (var i = 0; i < sections.length; i++) {
+        sections[i].classList.remove('active');
+      }
+
+      var activeSection = document.getElementById('section-' + section);
+      if (activeSection) {
+        activeSection.classList.add('active');
+      }
+    }
+
+    // ===== CONFIGURATION MANAGEMENT =====
+
+    function loadConfiguration() {
+      showLoading();
+
+      google.script.run
+        .withSuccessHandler(function(config) {
+          hideLoading();
+          currentConfig = config;
+          renderPlayerList(config.players, config.playerColors, config.playerEmojis);
+          renderVenueList(config.venues, config.mulliganVenues);
+          document.getElementById('session-gap-hours').value = config.sessionGapHours;
+
+          // Update user display
+          document.getElementById('admin-user').textContent = '👤 Admin';
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          showAlert('Error loading configuration: ' + error.message, 'error');
+        })
+        .adminGetConfig();
+    }
+
+    function renderPlayerList(players, colors, emojis) {
+      var container = document.getElementById('player-list');
+      container.innerHTML = '';
+
+      for (var i = 0; i < players.length; i++) {
+        var player = players[i];
+        var color = colors[player] || '#7c3aed';
+        var emoji = emojis[player] || '⚪';
+
+        var item = document.createElement('div');
+        item.className = 'list-item';
+        item.innerHTML =
+          '<span class="list-item-number">' + (i + 1) + '.</span>' +
+          '<input type="text" value="' + escapeHtml(player) + '" data-index="' + i + '" onchange="updatePlayerName(' + i + ')">' +
+          '<input type="color" value="' + color + '" data-index="' + i + '" title="Player Color" onchange="updatePlayerColor(' + i + ')">' +
+          '<input type="text" class="list-item-emoji" value="' + emoji + '" data-index="' + i + '" title="Player Emoji" maxlength="2" onchange="updatePlayerEmoji(' + i + ')">' +
+          '<button class="btn btn-icon btn-small" onclick="movePlayer(' + i + ', -1)" title="Move Up" ' + (i === 0 ? 'disabled' : '') + '>↑</button>' +
+          '<button class="btn btn-icon btn-small" onclick="movePlayer(' + i + ', 1)" title="Move Down" ' + (i === players.length - 1 ? 'disabled' : '') + '>↓</button>' +
+          '<button class="btn btn-danger btn-small" onclick="removePlayer(' + i + ')" title="Remove">×</button>';
+
+        container.appendChild(item);
+      }
+    }
+
+    function renderVenueList(venues, mulliganVenues) {
+      var container = document.getElementById('venue-list');
+      container.innerHTML = '';
+
+      for (var i = 0; i < venues.length; i++) {
+        var venue = venues[i];
+        var isMulligan = mulliganVenues.indexOf(venue) !== -1;
+
+        var item = document.createElement('div');
+        item.className = 'venue-item';
+        item.innerHTML =
+          '<input type="text" value="' + escapeHtml(venue) + '" data-index="' + i + '">' +
+          '<label>' +
+          '<input type="checkbox" ' + (isMulligan ? 'checked' : '') + ' data-index="' + i + '">' +
+          'Mulligan Venue' +
+          '</label>' +
+          '<button class="btn btn-danger btn-small" onclick="removeVenue(' + i + ')">×</button>';
+
+        container.appendChild(item);
+      }
+    }
+
+    function updatePlayerName(index) {
+      // Name updated - will be saved when user clicks Save
+    }
+
+    function updatePlayerColor(index) {
+      // Color updated - will be saved when user clicks Save
+    }
+
+    function updatePlayerEmoji(index) {
+      // Emoji updated - will be saved when user clicks Save
+    }
+
+    function addPlayer() {
+      // Get current state
+      var players = getPlayerList();
+      var colors = getPlayerColors();
+      var emojis = getPlayerEmojis();
+
+      // Add new player
+      players.push('New Player');
+      colors['New Player'] = '#7c3aed';
+      emojis['New Player'] = '⚪';
+
+      // Re-render with new player
+      renderPlayerList(players, colors, emojis);
+    }
+
+    function addVenue() {
+      var container = document.getElementById('venue-list');
+      var newIndex = container.children.length;
+
+      var item = document.createElement('div');
+      item.className = 'venue-item';
+      item.innerHTML =
+        '<input type="text" value="New Venue" data-index="' + newIndex + '">' +
+        '<label>' +
+        '<input type="checkbox" data-index="' + newIndex + '">' +
+        'Mulligan Venue' +
+        '</label>' +
+        '<button class="btn btn-danger btn-small" onclick="removeVenue(' + newIndex + ')">×</button>';
+
+      container.appendChild(item);
+    }
+
+    function removePlayer(index) {
+      var players = getPlayerList();
+      if (players.length <= 1) {
+        showAlert('At least one player is required', 'error');
+        return;
+      }
+
+      var colors = getPlayerColors();
+      var emojis = getPlayerEmojis();
+
+      players.splice(index, 1);
+
+      // Rebuild colors and emojis objects
+      var newColors = {};
+      var newEmojis = {};
+      for (var i = 0; i < players.length; i++) {
+        newColors[players[i]] = colors[players[i]] || '#7c3aed';
+        newEmojis[players[i]] = emojis[players[i]] || '⚪';
+      }
+
+      renderPlayerList(players, newColors, newEmojis);
+    }
+
+    function removeVenue(index) {
+      var venues = getVenueList();
+      if (venues.length <= 1) {
+        showAlert('At least one venue is required', 'error');
+        return;
+      }
+
+      var mulliganVenues = getMulliganVenues();
+      venues.splice(index, 1);
+
+      renderVenueList(venues, mulliganVenues);
+    }
+
+    function movePlayer(index, direction) {
+      var players = getPlayerList();
+      var colors = getPlayerColors();
+      var emojis = getPlayerEmojis();
+      var newIndex = index + direction;
+
+      if (newIndex < 0 || newIndex >= players.length) return;
+
+      // Swap players
+      var temp = players[index];
+      players[index] = players[newIndex];
+      players[newIndex] = temp;
+
+      renderPlayerList(players, colors, emojis);
+    }
+
+    function getPlayerList() {
+      var inputs = document.querySelectorAll('#player-list > .list-item > input[type="text"]:first-of-type');
+      var players = [];
+      for (var i = 0; i < inputs.length; i++) {
+        var name = inputs[i].value.trim();
+        if (name) players.push(name);
+      }
+      return players;
+    }
+
+    function getPlayerColors() {
+      var nameInputs = document.querySelectorAll('#player-list > .list-item > input[type="text"]:first-of-type');
+      var colorInputs = document.querySelectorAll('#player-list input[type="color"]');
+      var colors = {};
+
+      for (var i = 0; i < nameInputs.length; i++) {
+        var name = nameInputs[i].value.trim();
+        if (name && colorInputs[i]) {
+          colors[name] = colorInputs[i].value;
+        }
+      }
+
+      return colors;
+    }
+
+    function getPlayerEmojis() {
+      var nameInputs = document.querySelectorAll('#player-list > .list-item > input[type="text"]:first-of-type');
+      var emojiInputs = document.querySelectorAll('#player-list .list-item-emoji');
+      var emojis = {};
+
+      for (var i = 0; i < nameInputs.length; i++) {
+        var name = nameInputs[i].value.trim();
+        if (name && emojiInputs[i]) {
+          emojis[name] = emojiInputs[i].value.trim() || '⚪';
+        }
+      }
+
+      return emojis;
+    }
+
+    function getVenueList() {
+      var inputs = document.querySelectorAll('#venue-list input[type="text"]');
+      var venues = [];
+      for (var i = 0; i < inputs.length; i++) {
+        var name = inputs[i].value.trim();
+        if (name) venues.push(name);
+      }
+      return venues;
+    }
+
+    function getMulliganVenues() {
+      var venueInputs = document.querySelectorAll('#venue-list input[type="text"]');
+      var checkboxes = document.querySelectorAll('#venue-list input[type="checkbox"]');
+      var mulligan = [];
+
+      for (var i = 0; i < checkboxes.length; i++) {
+        if (checkboxes[i].checked && venueInputs[i]) {
+          var venueName = venueInputs[i].value.trim();
+          if (venueName) {
+            mulligan.push(venueName);
+          }
+        }
+      }
+
+      return mulligan;
+    }
+
+    function saveConfiguration() {
+      if (isSaving) return;
+
+      var players = getPlayerList();
+      var venues = getVenueList();
+      var sessionGapHours = document.getElementById('session-gap-hours').value;
+
+      // Validate
+      if (players.length === 0) {
+        showAlert('At least one player is required', 'error');
+        return;
+      }
+
+      if (venues.length === 0) {
+        showAlert('At least one venue is required', 'error');
+        return;
+      }
+
+      var hours = parseInt(sessionGapHours, 10);
+      if (isNaN(hours) || hours < 1 || hours > 99) {
+        showAlert('Session gap hours must be between 1 and 99', 'error');
+        return;
+      }
+
+      var config = {
+        players: players,
+        playerColors: getPlayerColors(),
+        playerEmojis: getPlayerEmojis(),
+        venues: venues,
+        mulliganVenues: getMulliganVenues(),
+        sessionGapHours: sessionGapHours
+      };
+
+      isSaving = true;
+      document.getElementById('save-btn').disabled = true;
+      document.getElementById('save-text').innerHTML = '<span class="loading"></span> Saving...';
+
+      google.script.run
+        .withSuccessHandler(function(response) {
+          isSaving = false;
+          document.getElementById('save-btn').disabled = false;
+          document.getElementById('save-text').textContent = 'Save Configuration';
+
+          showAlert(response.message, 'success');
+
+          // Reload to confirm changes
+          setTimeout(function() {
+            loadConfiguration();
+          }, 1000);
+        })
+        .withFailureHandler(function(error) {
+          isSaving = false;
+          document.getElementById('save-btn').disabled = false;
+          document.getElementById('save-text').textContent = 'Save Configuration';
+
+          showAlert('Error saving configuration: ' + error.message, 'error');
+        })
+        .adminSaveConfig(config);
+    }
+
+    // ===== UTILITY FUNCTIONS =====
+
+    function showAlert(message, type) {
+      var alert = document.getElementById('config-alert');
+      alert.className = 'alert alert-' + type + ' show';
+      alert.textContent = message;
+
+      setTimeout(function() {
+        alert.classList.remove('show');
+      }, 5000);
+    }
+
+    function showLoading() {
+      // Simple loading indication
+      var saveBtn = document.getElementById('save-btn');
+      if (saveBtn) saveBtn.disabled = true;
+    }
+
+    function hideLoading() {
+      var saveBtn = document.getElementById('save-btn');
+      if (saveBtn) saveBtn.disabled = false;
+    }
+
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>
