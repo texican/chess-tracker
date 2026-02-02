@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Chess Tracker - Client Tests</title>
+  <style>
+    body {
+      font-family: 'Courier New', monospace;
+      background: #1a1a1a;
+      color: #00ff00;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    .test-section {
+      margin: 20px 0;
+      padding: 15px;
+      border: 1px solid #333;
+      border-radius: 8px;
+      background: #0a0a0a;
+    }
+    .pass { color: #00ff00; }
+    .fail { color: #ff0000; }
+    .info { color: #00d4ff; }
+    .summary {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin: 20px 0;
+      padding: 15px;
+      border: 2px solid #7c3aed;
+      border-radius: 8px;
+    }
+    button {
+      background: #7c3aed;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      margin: 5px;
+    }
+    button:hover {
+      background: #6d28d9;
+    }
+    #results {
+      white-space: pre-wrap;
+      font-family: 'Courier New', monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧪 Chess Tracker - Automated Client Tests</h1>
+  
+  <div>
+    <button onclick="runAllTests()">Run All Tests</button>
+    <button onclick="runQuickTests()">Quick Smoke Test</button>
+    <button onclick="clearResults()">Clear Results</button>
+  </div>
+  
+  <div id="results"></div>
+
+  <script>
+    var testResults = {
+      passed: 0,
+      failed: 0,
+      errors: []
+    };
+
+    function log(message, type = 'info') {
+      var resultsDiv = document.getElementById('results');
+      var className = type === 'pass' ? 'pass' : type === 'fail' ? 'fail' : 'info';
+      resultsDiv.innerHTML += '<span class="' + className + '">' + message + '</span>\n';
+      console.log(message);
+    }
+
+    function assert(condition, message) {
+      if (condition) {
+        testResults.passed++;
+        log('✅ PASS: ' + message, 'pass');
+      } else {
+        testResults.failed++;
+        testResults.errors.push(message);
+        log('❌ FAIL: ' + message, 'fail');
+      }
+    }
+
+    function clearResults() {
+      document.getElementById('results').innerHTML = '';
+      testResults = { passed: 0, failed: 0, errors: [] };
+    }
+
+    async function runAllTests() {
+      clearResults();
+      log('=== STARTING CLIENT-SIDE TESTS ===\n', 'info');
+      
+      testPageLoad();
+      testColorEmojis();
+      testAppConfig();
+      testDropdownPopulation();
+      testFormValidation();
+      testUIInteractions();
+      
+      await testServerConnection();
+      
+      printTestResults();
+    }
+
+    async function runQuickTests() {
+      clearResults();
+      log('=== QUICK SMOKE TEST ===\n', 'info');
+      
+      testPageLoad();
+      testAppConfig();
+      await testServerConnection();
+      
+      printTestResults();
+    }
+
+    function testPageLoad() {
+      log('\n--- Testing Page Load ---', 'info');
+      
+      assert(document.querySelector('.form-container') !== null, 'Form container should exist');
+      assert(document.getElementById('whitePlayer') !== null, 'White player dropdown should exist');
+      assert(document.getElementById('blackPlayer') !== null, 'Black player dropdown should exist');
+      assert(document.getElementById('winner') !== null, 'Winner dropdown should exist');
+      assert(document.getElementById('gameEnding') !== null, 'Game ending dropdown should exist');
+      assert(document.querySelector('.submit-btn') !== null, 'Submit button should exist');
+    }
+
+    function testColorEmojis() {
+      log('\n--- Testing Color Emojis ---', 'info');
+      
+      try {
+        // Assuming colorEmojis is available in parent window
+        var hasEmojis = window.parent.colorEmojis !== undefined;
+        assert(hasEmojis, 'Color emojis object should be defined');
+        
+        if (hasEmojis) {
+          var emojis = window.parent.colorEmojis;
+          assert(emojis['#7c3aed'] === '🟣', 'Purple emoji should be 🟣');
+          assert(emojis['#00d4ff'] === '🔵', 'Cyan emoji should be 🔵');
+          assert(emojis['#10b981'] === '🟢', 'Green emoji should be 🟢');
+        }
+      } catch (error) {
+        log('⚠️  Color emoji test skipped (not in parent context)', 'info');
+      }
+    }
+
+    function testAppConfig() {
+      log('\n--- Testing App Configuration ---', 'info');
+      
+      try {
+        var config = window.parent.appConfig;
+        
+        assert(config !== undefined, 'appConfig should be defined');
+        assert(Array.isArray(config.players), 'Players should be an array');
+        assert(config.players.length === 3, 'Should have 3 default players');
+        assert(config.players.includes('Player1'), 'Should include Player1');
+        assert(config.players.includes('Player2'), 'Should include Player2');
+        assert(config.players.includes('Player3'), 'Should include Player3');
+        
+        assert(typeof config.playerColors === 'object', 'Player colors should be an object');
+        assert(config.playerColors['Player1'] === '#7c3aed', 'Player1 should be purple');
+        assert(config.playerColors['Player2'] === '#00d4ff', 'Player2 should be cyan');
+        assert(config.playerColors['Player3'] === '#10b981', 'Player3 should be green');
+        
+        assert(Array.isArray(config.venues), 'Venues should be an array');
+        assert(config.venues.includes('Home'), 'Should include Home venue');
+        
+      } catch (error) {
+        log('⚠️  Config test requires running in actual app context', 'info');
+      }
+    }
+
+    function testDropdownPopulation() {
+      log('\n--- Testing Dropdown Population ---', 'info');
+      
+      var whiteSelect = document.getElementById('whitePlayer');
+      var blackSelect = document.getElementById('blackPlayer');
+      
+      if (whiteSelect && blackSelect) {
+        var whiteOptions = whiteSelect.options;
+        var blackOptions = blackSelect.options;
+        
+        assert(whiteOptions.length > 1, 'White player dropdown should have options');
+        assert(blackOptions.length > 1, 'Black player dropdown should have options');
+        
+        // Check for emoji prefixes
+        var hasEmoji = false;
+        for (var i = 0; i < whiteOptions.length; i++) {
+          if (whiteOptions[i].text.match(/[🟣🔵🟢]/)) {
+            hasEmoji = true;
+            break;
+          }
+        }
+        assert(hasEmoji, 'Player options should have emoji prefixes');
+        
+        // Check "Other" option exists
+        var hasOther = false;
+        for (var i = 0; i < whiteOptions.length; i++) {
+          if (whiteOptions[i].value === 'Other') {
+            hasOther = true;
+            break;
+          }
+        }
+        assert(hasOther, 'Should have "Other" option');
+      }
+    }
+
+    function testFormValidation() {
+      log('\n--- Testing Form Validation ---', 'info');
+      
+      var whitePlayer = document.getElementById('whitePlayer');
+      var blackPlayer = document.getElementById('blackPlayer');
+      
+      if (whitePlayer && blackPlayer) {
+        assert(whitePlayer.required === true, 'White player should be required');
+        assert(blackPlayer.required === true, 'Black player should be required');
+        
+        var winner = document.getElementById('winner');
+        assert(winner.required === true, 'Winner should be required');
+        
+        var gameEnding = document.getElementById('gameEnding');
+        assert(gameEnding.required === true, 'Game ending should be required');
+      }
+    }
+
+    function testUIInteractions() {
+      log('\n--- Testing UI Interactions ---', 'info');
+      
+      // Test function existence
+      try {
+        assert(typeof window.parent.updateWinnerDropdown === 'function', 'updateWinnerDropdown should exist');
+        assert(typeof window.parent.checkDuplicatePlayers === 'function', 'checkDuplicatePlayers should exist');
+        assert(typeof window.parent.toggleOtherPlayer === 'function', 'toggleOtherPlayer should exist');
+        assert(typeof window.parent.handleSubmit === 'function', 'handleSubmit should exist');
+      } catch (error) {
+        log('⚠️  Function checks require running in actual app context', 'info');
+      }
+    }
+
+    async function testServerConnection() {
+      log('\n--- Testing Server Connection ---', 'info');
+      
+      return new Promise((resolve) => {
+        try {
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            // Test getConfig call
+            google.script.run
+              .withSuccessHandler(function(config) {
+                assert(config !== null, 'Server returned config');
+                assert(config.players !== undefined, 'Config has players');
+                log('✅ Server connection successful', 'pass');
+                resolve();
+              })
+              .withFailureHandler(function(error) {
+                assert(false, 'Server connection failed: ' + error.message);
+                resolve();
+              })
+              .getConfig();
+          } else {
+            log('⚠️  Google Script API not available (requires deployed app)', 'info');
+            resolve();
+          }
+        } catch (error) {
+          log('⚠️  Server connection test requires deployed environment', 'info');
+          resolve();
+        }
+      });
+    }
+
+    function printTestResults() {
+      log('\n=== TEST RESULTS ===', 'info');
+      log('Passed: ' + testResults.passed, testResults.passed > 0 ? 'pass' : 'info');
+      log('Failed: ' + testResults.failed, testResults.failed > 0 ? 'fail' : 'info');
+      log('Total:  ' + (testResults.passed + testResults.failed), 'info');
+      
+      if (testResults.failed > 0) {
+        log('\n❌ FAILED TESTS:', 'fail');
+        testResults.errors.forEach(function(error) {
+          log('  - ' + error, 'fail');
+        });
+      } else {
+        log('\n🎉 ALL TESTS PASSED!', 'pass');
+      }
+    }
+
+    // Auto-run on page load if in test mode
+    if (window.location.search.includes('autorun=true')) {
+      window.addEventListener('load', function() {
+        setTimeout(runAllTests, 500);
+      });
+    }
+  </script>
+</body>
+</html>

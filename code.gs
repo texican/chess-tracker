@@ -1,22 +1,66 @@
 /**
  * Google Apps Script Server Code - Chess Game Tracker
- * Version: 1.0.0
- * Last Updated: 2026-01-08
+ * Version: 2.0.0
+ * Last Updated: 2026-01-12
  * 
  * Features:
  * - Chess game logging with result tracking
- * - Rating and performance analysis
- * - Opponent and opening tracking
- * - Time control and platform recording
+ * - Session-based analytics with configurable time gaps
+ * - Player and venue management
+ * - Mulligan tracking
+ * - Picture uploads to Google Drive
+ * - Rate limiting and input validation
  */
 
 const VERSION = '2.0.0';
 const LAST_UPDATED = '2026-01-12';
 
+// ===== CONFIGURATION CONSTANTS =====
+
 /**
- * Structured logging helper
- * @param {string} event - Event name
- * @param {Object} data - Event data
+ * Default configuration values
+ * These are fallbacks if Script Properties are not set
+ */
+const DEFAULT_CONFIG = {
+  PLAYERS: 'Player1,Player2,Player3',
+  PLAYER_COLORS: 'Player1:#7c3aed,Player2:#00d4ff,Player3:#10b981',
+  PLAYER_EMOJIS: 'Player1:🟣,Player2:🔵,Player3:🟢',
+  VENUES: 'Home,Park',
+  MULLIGAN_VENUES: '',
+  SESSION_GAP_HOURS: '6'
+};
+
+/**
+ * Validation limits for input sanitization
+ */
+const VALIDATION_LIMITS = {
+  PLAYER_NAME_MAX: 50,
+  VENUE_MAX: 100,
+  NOTES_MAX: 500,
+  RATE_LIMIT_MS: 1000,
+  SESSION_GAP_DEFAULT_HOURS: 6
+};
+
+/**
+ * Valid values for constrained fields
+ */
+const VALID_VALUES = {
+  WINNER: ['White', 'Black', 'Draw'],
+  GAME_ENDINGS: [
+    'Checkmate', 'Resignation', 'Time Out',
+    'Stalemate', 'Insufficient Material', 'Threefold Repetition',
+    '50-Move Rule', 'Agreement'
+  ]
+};
+
+// ===== UTILITY FUNCTIONS =====
+
+// ===== UTILITY FUNCTIONS =====
+
+/**
+ * Structured logging helper with version tracking
+ * @param {string} event - Event name (e.g., 'form_submitted', 'validation_error')
+ * @param {Object} data - Event data to log
  */
 function logEvent(event, data) {
   const logEntry = {
@@ -29,34 +73,80 @@ function logEvent(event, data) {
 }
 
 /**
- * Get configuration from Script Properties
- * @returns {Object} Configuration object with players, venues, mulligan settings
+ * Standardized error handling with logging
+ * @param {string} context - Context where error occurred (e.g., 'form_submission', 'picture_upload')
+ * @param {Error} error - The error object
+ * @param {boolean} shouldThrow - Whether to re-throw the error (default: true)
+ */
+function handleError(context, error, shouldThrow = true) {
+  logEvent(`${context}_error`, { 
+    error: error.toString(), 
+    stack: error.stack 
+  });
+  if (shouldThrow) {
+    throw error;
+  }
+}
+
+// ===== CONFIGURATION MANAGEMENT =====
+
+// ===== CONFIGURATION MANAGEMENT =====
+
+/**
+ * Get configuration from Script Properties with fallback to defaults
+ * @returns {Object} Configuration object with players, venues, mulligan settings, and player colors
  */
 function getConfig() {
   const props = PropertiesService.getScriptProperties();
 
   // Get players list (comma-separated)
-  const playersStr = props.getProperty('PLAYERS') || 'Player 1,Player 2,Player 3';
+  const playersStr = props.getProperty('PLAYERS') || DEFAULT_CONFIG.PLAYERS;
   const players = playersStr.split(',').map(function(p) { return p.trim(); }).filter(function(p) { return p; });
 
+  // Get player colors mapping from properties (format: "Player1:#7c3aed,Player2:#00d4ff,Player3:#10b981")
+  const playerColorsStr = props.getProperty('PLAYER_COLORS') || DEFAULT_CONFIG.PLAYER_COLORS;
+  const playerColors = {};
+  playerColorsStr.split(',').forEach(function(entry) {
+    const parts = entry.trim().split(':');
+    if (parts.length === 2) {
+      playerColors[parts[0].trim()] = parts[1].trim();
+    }
+  });
+
+  // Get player emojis mapping from properties (format: "Player1:🟣,Player2:🔵,Player3:🟢")
+  const playerEmojisStr = props.getProperty('PLAYER_EMOJIS') || DEFAULT_CONFIG.PLAYER_EMOJIS;
+  const playerEmojis = {};
+  playerEmojisStr.split(',').forEach(function(entry) {
+    const parts = entry.trim().split(':');
+    if (parts.length === 2) {
+      playerEmojis[parts[0].trim()] = parts[1].trim();
+    }
+  });
+
   // Get venues list (comma-separated)
-  const venuesStr = props.getProperty('VENUES') || 'Home,Park';
+  const venuesStr = props.getProperty('VENUES') || DEFAULT_CONFIG.VENUES;
   const venues = venuesStr.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
 
   // Get mulligan-enabled venues (comma-separated)
-  const mulliganStr = props.getProperty('MULLIGAN_VENUES') || '';
+  const mulliganStr = props.getProperty('MULLIGAN_VENUES') || DEFAULT_CONFIG.MULLIGAN_VENUES;
   const mulliganVenues = mulliganStr.split(',').map(function(v) { return v.trim(); }).filter(function(v) { return v; });
 
   // Get session gap hours (default 6)
-  const sessionGapHours = parseInt(props.getProperty('SESSION_GAP_HOURS') || '6');
+  const sessionGapHours = parseInt(props.getProperty('SESSION_GAP_HOURS') || DEFAULT_CONFIG.SESSION_GAP_HOURS);
 
   return {
     players: players,
+    playerColors: playerColors,
+    playerEmojis: playerEmojis,
     venues: venues,
     mulliganVenues: mulliganVenues,
     sessionGapHours: sessionGapHours
   };
 }
+
+// ===== WEB APP ENTRY POINT =====
+
+// ===== WEB APP ENTRY POINT =====
 
 /**
  * Serves the HTML form when web app is accessed
@@ -72,14 +162,79 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
       
   } catch (error) {
-    logEvent('form_serve_error', { error: error.toString(), stack: error.stack });
+    handleError('form_serve', error);
+  }
+}
+
+// ===== BACKUP MANAGEMENT =====
+
+/**
+ * Backup a match to the BackupMatches sheet
+ * This creates an immutable backup record with a backup timestamp
+ * @param {Array} rowData - The match data to backup
+ */
+function backupMatch(rowData) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    let backupSheet = spreadsheet.getSheetByName('BackupMatches');
+    
+    // Create BackupMatches sheet if it doesn't exist
+    if (!backupSheet) {
+      backupSheet = spreadsheet.insertSheet('BackupMatches');
+    }
+    
+    // Add headers if this is a new sheet
+    if (backupSheet.getLastRow() === 0) {
+      const headers = [
+        'Backup Timestamp',
+        'Original Timestamp',
+        'White Player',
+        'Black Player',
+        'Winner',
+        'Game Ending',
+        'Time Limit',
+        'Venue',
+        'Brutality',
+        'Notes',
+        'Picture URL',
+        'White Mulligan',
+        'Black Mulligan',
+        'Session ID'
+      ];
+      backupSheet.appendRow(headers);
+      
+      // Format header row
+      const headerRange = backupSheet.getRange(1, 1, 1, headers.length);
+      headerRange.setFontWeight('bold');
+      headerRange.setBackground('#4a90e2');
+      headerRange.setFontColor('white');
+    }
+    
+    // Prepend backup timestamp to the row data
+    const backupRow = [new Date()].concat(rowData);
+    backupSheet.appendRow(backupRow);
+    
+    logEvent('match_backed_up', { 
+      sessionId: rowData[rowData.length - 1],
+      originalTimestamp: rowData[0]
+    });
+    
+  } catch (error) {
+    logEvent('backup_match_error', { 
+      error: error.toString(), 
+      stack: error.stack 
+    });
     throw error;
   }
 }
 
+// ===== SESSION MANAGEMENT =====
+
+// ===== SESSION MANAGEMENT =====
+
 /**
- * Retrieve the last match timestamp, session id, and venue from the sheet.
- * @param {Sheet} sheet
+ * Retrieve the last match timestamp, session id, and venue from the sheet
+ * @param {Sheet} sheet - The Matches sheet
  * @returns {Object|null} { timestamp: Date, sessionId: string, venue: string } or null if no data rows
  */
 function getLastMatchInfo(sheet) {
@@ -112,8 +267,8 @@ function getLastMatchInfo(sheet) {
 }
 
 /**
- * Decide whether to start a new session based on time gap (hours) and venue change.
- * Returns an existing sessionId or new UUID.
+ * Decide whether to start a new session based on time gap (hours) and venue change
+ * Returns an existing sessionId or new UUID
  * @param {Sheet} sheet - The Matches sheet
  * @param {number} gapHours - Hours threshold for new session
  * @param {string} currentVenue - Venue for the current match
@@ -146,8 +301,10 @@ function assignSessionIdForNewMatch(sheet, gapHours, currentVenue) {
   return info.sessionId;
 }
 
+// ===== FORM SUBMISSION & VALIDATION =====
+
 /**
- * Processes chess game form submissions
+ * Processes chess game form submissions with validation and data persistence
  * @param {string[]} formData - Array: [whitePlayer, blackPlayer, winner, gameEnding, timeLimit, venue, brutality, notes, pictureData, whiteMulligan, blackMulligan]
  * @returns {Object} Success response with timestamp
  * @throws {Error} If validation fails or spreadsheet access fails
@@ -157,7 +314,7 @@ function addRow(formData) {
     // Rate limiting - prevent spam submissions
     const lastSubmission = PropertiesService.getScriptProperties().getProperty('lastSubmission');
     const now = Date.now();
-    if (lastSubmission && (now - parseInt(lastSubmission)) < 1000) {
+    if (lastSubmission && (now - parseInt(lastSubmission)) < VALIDATION_LIMITS.RATE_LIMIT_MS) {
       throw new Error('Please wait before submitting again');
     }
     PropertiesService.getScriptProperties().setProperty('lastSubmission', now.toString());
@@ -174,16 +331,16 @@ function addRow(formData) {
     if (!whitePlayer || whitePlayer.length === 0) {
       throw new Error('White player is required');
     }
-    if (whitePlayer.length > 50) {
-      throw new Error('White player name must be less than 50 characters');
+    if (whitePlayer.length > VALIDATION_LIMITS.PLAYER_NAME_MAX) {
+      throw new Error(`White player name must be less than ${VALIDATION_LIMITS.PLAYER_NAME_MAX} characters`);
     }
     
     const blackPlayer = (formData[1] || '').toString().trim();
     if (!blackPlayer || blackPlayer.length === 0) {
       throw new Error('Black player is required');
     }
-    if (blackPlayer.length > 50) {
-      throw new Error('Black player name must be less than 50 characters');
+    if (blackPlayer.length > VALIDATION_LIMITS.PLAYER_NAME_MAX) {
+      throw new Error(`Black player name must be less than ${VALIDATION_LIMITS.PLAYER_NAME_MAX} characters`);
     }
     
     if (whitePlayer === blackPlayer) {
@@ -191,7 +348,7 @@ function addRow(formData) {
     }
     
     const winner = (formData[2] || '').toString().trim();
-    if (!winner || !['White', 'Black', 'Draw'].includes(winner)) {
+    if (!winner || !VALID_VALUES.WINNER.includes(winner)) {
       throw new Error('Valid winner is required');
     }
     
@@ -201,8 +358,8 @@ function addRow(formData) {
     }
     
     const venue = (formData[5] || '').toString().trim();
-    if (venue.length > 100) {
-      throw new Error('Venue must be less than 100 characters');
+    if (venue.length > VALIDATION_LIMITS.VENUE_MAX) {
+      throw new Error(`Venue must be less than ${VALIDATION_LIMITS.VENUE_MAX} characters`);
     }
     
     // Time limit validation: required if game ending is "Time Out"
@@ -281,7 +438,7 @@ function addRow(formData) {
           });
         }
       } catch (error) {
-        logEvent('picture_upload_error', { error: error.toString() });
+        handleError('picture_upload', error, false); // Log but don't throw
         // Continue without picture if upload fails
       }
     }
@@ -295,7 +452,7 @@ function addRow(formData) {
         sessionId = assignSessionIdForNewMatch(sheet, config.sessionGapHours, venue);
       } catch (e) {
         // If session assignment fails, create new UUID as fallback
-        logEvent('session_assignment_error', { error: e.toString() });
+        handleError('session_assignment', e, false);
         sessionId = Utilities.getUuid();
       }
     }
@@ -319,6 +476,17 @@ function addRow(formData) {
     ];
     
     sheet.appendRow(rowData);
+
+    // Backup match to BackupMatches sheet (skip for test matches)
+    const notes = (formData[7] || '').toString().trim();
+    if (notes.indexOf('Test match') === -1) {
+      try {
+        backupMatch(rowData);
+      } catch (e) {
+        logEvent('backup_match_error', { error: e.toString() });
+        // Non-blocking - don't fail submission if backup fails
+      }
+    }
 
     // Attempt to update session summary (non-blocking).
     try {
@@ -347,13 +515,8 @@ function addRow(formData) {
     return result_obj;
       
   } catch (error) {
-    logEvent('form_submission_error', { 
-      error: error.toString(), 
-      stack: error.stack,
-      formDataValid: Array.isArray(formData)
-    });
-    
-    throw new Error('Failed to save friend chess game: ' + error.message);
+    handleError('form_submission', error, false);
+    throw new Error('Failed to save chess game: ' + error.message);
   }
 }
 
@@ -630,6 +793,171 @@ function saveSessionSummary(sessionId) {
 }
 
 /**
+ * Recompute session statistics from source of truth (Matches sheet)
+ * Recalculates Sessions and SessionPlayers sheets based on current match data
+ * Use this after deleting matches or when derived data is out of sync
+ * 
+ * @param {string} sessionId - The session ID to recalculate
+ * @returns {Object} Result with success status and details
+ */
+function recomputeSessionStats(sessionId) {
+  try {
+    if (!sessionId) {
+      throw new Error('sessionId is required');
+    }
+    
+    logEvent('recompute_session_stats_start', { sessionId: sessionId });
+    
+    const spreadsheet = getOrCreateSpreadsheet();
+    const matchesSheet = spreadsheet.getSheetByName('Matches');
+    
+    if (!matchesSheet) {
+      return { success: false, error: 'Matches sheet not found' };
+    }
+    
+    // Check if session has any matches
+    const data = matchesSheet.getDataRange().getValues();
+    const headers = data[0];
+    const sessionIdCol = headers.indexOf('Session ID');
+    
+    if (sessionIdCol === -1) {
+      return { success: false, error: 'Session ID column not found in Matches sheet' };
+    }
+    
+    let hasMatches = false;
+    for (let i = 1; i < data.length; i++) {
+      if ((data[i][sessionIdCol] || '').toString() === sessionId) {
+        hasMatches = true;
+        break;
+      }
+    }
+    
+    if (!hasMatches) {
+      // No matches for this session - remove from Sessions and SessionPlayers
+      logEvent('recompute_no_matches', { sessionId: sessionId });
+      removeEmptySession(sessionId);
+      return { success: true, sessionId: sessionId, action: 'removed', reason: 'no matches found' };
+    }
+    
+    // Clean up stale SessionPlayers entries before recalculating
+    cleanupStaleSessionPlayers(sessionId);
+    
+    // Recalculate using existing saveSessionSummary function
+    const result = saveSessionSummary(sessionId);
+    
+    logEvent('recompute_session_stats_complete', { sessionId: sessionId, result: result });
+    
+    return { success: true, sessionId: sessionId, action: 'recalculated', result: result };
+    
+  } catch (error) {
+    logEvent('recompute_session_stats_error', { sessionId: sessionId, error: error.toString(), stack: error.stack });
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Remove session from Sessions and SessionPlayers when it has no matches
+ * @param {string} sessionId - Session to remove
+ */
+function removeEmptySession(sessionId) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    
+    // Remove from Sessions sheet
+    const sessionsSheet = spreadsheet.getSheetByName('Sessions');
+    if (sessionsSheet) {
+      const data = sessionsSheet.getDataRange().getValues();
+      for (let i = data.length - 1; i > 0; i--) {
+        if ((data[i][0] || '').toString() === sessionId) {
+          sessionsSheet.deleteRow(i + 1);
+          logEvent('removed_empty_session', { sessionId: sessionId });
+          break;
+        }
+      }
+    }
+    
+    // Remove from SessionPlayers sheet
+    const playersSheet = spreadsheet.getSheetByName('SessionPlayers');
+    if (playersSheet) {
+      const data = playersSheet.getDataRange().getValues();
+      const rowsToDelete = [];
+      for (let i = data.length - 1; i > 0; i--) {
+        if ((data[i][0] || '').toString() === sessionId) {
+          rowsToDelete.push(i + 1);
+        }
+      }
+      for (let i = 0; i < rowsToDelete.length; i++) {
+        playersSheet.deleteRow(rowsToDelete[i] - i);
+      }
+      if (rowsToDelete.length > 0) {
+        logEvent('removed_empty_session_players', { sessionId: sessionId, count: rowsToDelete.length });
+      }
+    }
+  } catch (error) {
+    logEvent('remove_empty_session_error', { sessionId: sessionId, error: error.toString() });
+  }
+}
+
+/**
+ * Remove SessionPlayers entries for players who no longer have matches in this session
+ * This cleans up entries that exist in SessionPlayers but have no corresponding matches
+ * @param {string} sessionId - Session to clean up
+ */
+function cleanupStaleSessionPlayers(sessionId) {
+  try {
+    const spreadsheet = getOrCreateSpreadsheet();
+    const matchesSheet = spreadsheet.getSheetByName('Matches');
+    const playersSheet = spreadsheet.getSheetByName('SessionPlayers');
+    
+    if (!matchesSheet || !playersSheet) return;
+    
+    // Get all players who actually played in this session (from Matches)
+    const matchData = matchesSheet.getDataRange().getValues();
+    const matchHeaders = matchData[0];
+    const sessionIdCol = matchHeaders.indexOf('Session ID');
+    const whiteCol = matchHeaders.indexOf('White Player');
+    const blackCol = matchHeaders.indexOf('Black Player');
+    
+    if (sessionIdCol === -1 || whiteCol === -1 || blackCol === -1) return;
+    
+    const actualPlayers = {};
+    for (let i = 1; i < matchData.length; i++) {
+      if ((matchData[i][sessionIdCol] || '').toString() === sessionId) {
+        const white = (matchData[i][whiteCol] || '').toString().trim();
+        const black = (matchData[i][blackCol] || '').toString().trim();
+        if (white) actualPlayers[white] = true;
+        if (black) actualPlayers[black] = true;
+      }
+    }
+    
+    // Remove SessionPlayers entries for players not in actualPlayers
+    const playerData = playersSheet.getDataRange().getValues();
+    const rowsToDelete = [];
+    
+    for (let i = playerData.length - 1; i > 0; i--) {
+      const sid = (playerData[i][0] || '').toString();
+      const player = (playerData[i][1] || '').toString().trim();
+      
+      if (sid === sessionId && !actualPlayers[player]) {
+        rowsToDelete.push(i + 1);
+        logEvent('removing_stale_player', { sessionId: sessionId, player: player });
+      }
+    }
+    
+    for (let i = 0; i < rowsToDelete.length; i++) {
+      playersSheet.deleteRow(rowsToDelete[i] - i);
+    }
+    
+    if (rowsToDelete.length > 0) {
+      logEvent('cleanup_stale_players', { sessionId: sessionId, removed: rowsToDelete.length });
+    }
+    
+  } catch (error) {
+    logEvent('cleanup_stale_players_error', { sessionId: sessionId, error: error.toString() });
+  }
+}
+
+/**
  * Get list of all sessions for dropdown selection
  * @returns {Array} Array of session objects with id, venue, startTime, matchCount
  */
@@ -772,6 +1100,29 @@ function getCurrentSessionData(sessionId) {
       };
     }
 
+    // Calculate white vs black wins
+    var whiteWins = 0;
+    var blackWins = 0;
+    var draws = 0;
+    
+    if (matchesSheet && matchesSheet.getLastRow() > 1) {
+      var allMatches = matchesSheet.getDataRange().getValues();
+      var winnerCol = allMatches[0].indexOf('Winner');
+      
+      for (var m = 1; m < allMatches.length; m++) {
+        if (allMatches[m][sessionIdCol] === currentSessionId) {
+          var winner = allMatches[m][winnerCol];
+          if (winner === 'White') {
+            whiteWins++;
+          } else if (winner === 'Black') {
+            blackWins++;
+          } else if (winner === 'Draw') {
+            draws++;
+          }
+        }
+      }
+    }
+
     // Convert Date objects to ISO strings for proper serialization
     var result = {
       sessionId: currentSessionId,
@@ -779,6 +1130,9 @@ function getCurrentSessionData(sessionId) {
       startTime: sessionData.startTime ? new Date(sessionData.startTime).toISOString() : null,
       matchCount: sessionData.matchCount,
       playerStats: playerStats,
+      whiteWins: whiteWins,
+      blackWins: blackWins,
+      draws: draws,
       lastMatch: lastMatchInfo ? {
         timestamp: lastMatchInfo.timestamp ? new Date(lastMatchInfo.timestamp).toISOString() : null,
         whitePlayer: lastMatchInfo.whitePlayer,
@@ -800,6 +1154,144 @@ function getCurrentSessionData(sessionId) {
 
   } catch (error) {
     logEvent('get_current_session_error', { error: error.toString(), stack: error.stack });
+    return null;
+  }
+}
+
+/**
+ * Get aggregated stats for the current year (all sessions in 2026)
+ */
+function getYearToDateStats() {
+  try {
+    logEvent('get_year_to_date_request', {});
+
+    var spreadsheet = getOrCreateSpreadsheet();
+    var sessionPlayersSheet = spreadsheet.getSheetByName('SessionPlayers');
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+
+    if (!sessionPlayersSheet || sessionPlayersSheet.getLastRow() <= 1) {
+      return null; // No session player data yet
+    }
+
+    // Get headers from SessionPlayers sheet
+    var spHeaders = sessionPlayersSheet.getRange(1, 1, 1, sessionPlayersSheet.getLastColumn()).getValues()[0];
+    var playerCol = spHeaders.indexOf('Player');
+    var matchesCol = spHeaders.indexOf('Matches');
+    var winsCol = spHeaders.indexOf('Wins');
+    var lossesCol = spHeaders.indexOf('Losses');
+    var drawsCol = spHeaders.indexOf('Draws');
+    var inflictedCol = spHeaders.indexOf('Inflicted');
+    var sufferedCol = spHeaders.indexOf('Suffered');
+
+    logEvent('ytd_headers', {
+      headers: spHeaders.toString(),
+      playerCol: playerCol,
+      matchesCol: matchesCol,
+      winsCol: winsCol,
+      lossesCol: lossesCol,
+      drawsCol: drawsCol,
+      inflictedCol: inflictedCol,
+      sufferedCol: sufferedCol
+    });
+
+    // Get all data from SessionPlayers
+    var sessionPlayersData = sessionPlayersSheet.getDataRange().getValues();
+
+    // Aggregate by player
+    var playerStatsMap = {};
+    for (var i = 1; i < sessionPlayersData.length; i++) {
+      var player = sessionPlayersData[i][playerCol];
+      var matches = sessionPlayersData[i][matchesCol] || 0;
+      var wins = sessionPlayersData[i][winsCol] || 0;
+      var losses = sessionPlayersData[i][lossesCol] || 0;
+      var draws = sessionPlayersData[i][drawsCol] || 0;
+      var inflicted = sessionPlayersData[i][inflictedCol] || 0;
+      var suffered = sessionPlayersData[i][sufferedCol] || 0;
+
+      if (!playerStatsMap[player]) {
+        playerStatsMap[player] = { player: player, matches: 0, wins: 0, losses: 0, draws: 0, inflicted: 0, suffered: 0 };
+      }
+
+      playerStatsMap[player].matches += matches;
+      playerStatsMap[player].wins += wins;
+      playerStatsMap[player].losses += losses;
+      playerStatsMap[player].draws += draws;
+      playerStatsMap[player].inflicted += inflicted;
+      playerStatsMap[player].suffered += suffered;
+    }
+
+    // Convert to array and sort by wins descending
+    var playerStats = [];
+    for (var playerName in playerStatsMap) {
+      if (playerStatsMap.hasOwnProperty(playerName)) {
+        playerStats.push(playerStatsMap[playerName]);
+      }
+    }
+
+    playerStats.sort(function(a, b) {
+      return b.wins - a.wins;
+    });
+
+    logEvent('ytd_player_stats', {
+      playerStats: JSON.stringify(playerStats)
+    });
+
+    // Get white/black wins and draws from Sessions sheet
+    var whiteWins = 0;
+    var blackWins = 0;
+    var draws = 0;
+    var matchCount = 0;
+    var sessionCount = 0;
+    var venuesSet = {};
+
+    if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
+      var sessionsData = sessionsSheet.getDataRange().getValues();
+      var sessHeaders = sessionsData[0];
+      var sWhiteWinsCol = sessHeaders.indexOf('White Wins');
+      var sBlackWinsCol = sessHeaders.indexOf('Black Wins');
+      var sDrawsCol = sessHeaders.indexOf('Draws');
+      var sMatchesCol = sessHeaders.indexOf('Matches');
+      var sVenueCol = sessHeaders.indexOf('Venue');
+
+      // Aggregate all sessions
+      for (var s = 1; s < sessionsData.length; s++) {
+        whiteWins += sessionsData[s][sWhiteWinsCol] || 0;
+        blackWins += sessionsData[s][sBlackWinsCol] || 0;
+        draws += sessionsData[s][sDrawsCol] || 0;
+        matchCount += sessionsData[s][sMatchesCol] || 0;
+        sessionCount++;
+        
+        // Track unique venues
+        var venue = sessionsData[s][sVenueCol];
+        if (venue) {
+          venuesSet[venue] = true;
+        }
+      }
+    }
+
+    var result = {
+      sessionId: 'ytd-' + new Date().getFullYear(),
+      matchCount: matchCount,
+      sessionCount: sessionCount,
+      venueCount: Object.keys(venuesSet).length,
+      playerStats: playerStats,
+      whiteWins: whiteWins,
+      blackWins: blackWins,
+      draws: draws
+    };
+
+    logEvent('get_year_to_date_success', {
+      matchCount: matchCount,
+      playerCount: playerStats.length,
+      whiteWins: whiteWins,
+      blackWins: blackWins,
+      draws: draws
+    });
+
+    return result;
+
+  } catch (error) {
+    logEvent('get_year_to_date_error', { error: error.toString(), stack: error.stack });
     return null;
   }
 }

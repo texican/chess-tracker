@@ -24,6 +24,7 @@ This is a Google Apps Script chess game tracker that allows users to log their c
 - Simple variable declarations (`var` not `let/const`)
 - Basic DOM manipulation (`getElementById`, `innerHTML`)
 - Server-side Google Sheets API calls
+- CSS `clamp()` for responsive sizing (see Responsive Design section below)
 
 **❌ PATTERNS AVOIDED (CAUSE FAILURES IN GAS):**
 - Modern fetch() API (unreliable in GAS sandbox)
@@ -32,6 +33,276 @@ This is a Google Apps Script chess game tracker that allows users to log their c
 - Arrow functions and modern JavaScript features
 - External API calls and CORS requests
 - Modern JavaScript frameworks (React, Vue, etc.)
+
+## Responsive Design with clamp()
+
+The `clamp()` CSS function is used extensively for responsive, fluid sizing that scales gracefully across all screen sizes without breakpoints. This is superior to fixed pixel values or media queries for most UI elements.
+
+**clamp() Syntax:**
+```css
+property: clamp(MIN, PREFERRED, MAX);
+```
+
+**Best Practices:**
+
+1. **Use container query units for flexibility**
+   - `cqw`: Container query width (percentage of container width)
+   - `cqh`: Container query height (percentage of container height)
+   - `vw/vh`: Viewport units for full-screen elements
+   - Example: `font-size: clamp(0.8rem, 2.5cqw, 0.95rem);`
+
+2. **Min value (first parameter)**
+   - Should be the absolute minimum readable/usable size
+   - Use `rem` units for maintainability (scales with user font preferences)
+   - Example: `clamp(0.8rem, ...)` ensures text never gets too small
+
+3. **Preferred value (second parameter)**
+   - The "ideal" value that scales with viewport
+   - Use responsive units: `cqw`, `cqh`, `vw`, `vh`
+   - This is what scales the element - the min/max just constrain it
+   - Example: `clamp(..., 2.5cqw, ...)` scales with 2.5% of container width
+
+4. **Max value (third parameter)**
+   - The upper limit for readability/aesthetics
+   - Prevents content from becoming too large on big screens
+   - Use `rem` or `em` units
+   - Example: `clamp(..., 0.95rem)` caps header size
+
+**Real Examples from Chess Tracker:**
+
+```css
+/* Header font sizing - scales smoothly, never too big or small */
+h3 {
+  font-size: clamp(0.8rem, 2.5cqw, 0.95rem);
+}
+
+/* Padding that adapts to container - responsive without breakpoints */
+.session-header {
+  padding: clamp(6px, 1.2cqh, 8px);
+}
+
+/* Gap sizing that scales with available space */
+.session-header-left {
+  gap: 10px;
+  /* Could also use: gap: clamp(8px, 1.5cqw, 12px); */
+}
+
+/* Match count badge - maintains minimum visibility */
+.stat-bar-segment.draws {
+  min-width: clamp(30px, 5cqw, 60px);
+}
+```
+
+**When to Use clamp():**
+
+✅ **Font sizes** - Different devices, different accessibility preferences
+✅ **Padding/margins** - Space should scale with viewport
+✅ **Min-width/max-width** - Ensure readability across screen sizes
+✅ **Min-height** - Keep interactive elements clickable on mobile
+✅ **Gap in flexbox** - Space between items should be proportional
+
+❌ **NOT for**: Fixed element dimensions (logos, images with aspect ratios)
+❌ **NOT for**: Media query breakpoints (still use @media for layout changes)
+
+**Performance Note:**
+`clamp()` has excellent browser support (all modern browsers) and zero performance cost - it's calculated at render time just like any CSS value.
+
+## Testing Strategy
+
+### Automated Testing
+
+The project uses a comprehensive automated test suite to validate functionality and prevent regressions.
+
+**Test Files:**
+- `test-suite.gs` - Server-side automated tests (44 tests)
+- `test-cleanup.gs` - Automatic test data cleanup utilities
+- `test-client.html` - Client-side UI and integration tests
+
+**Running Tests:**
+```javascript
+// Apps Script Editor function dropdown:
+testAll();      // Complete test battery (~10 seconds)
+quickTest();    // Fast smoke test (configuration + server connection)
+```
+
+**Test Coverage:**
+
+✅ **Configuration Tests** (testGetConfig, testDefaultConfig, testPlayerColors)
+- Script Properties loading and parsing
+- Default values: players (Carlos,Carey,Jorge), venues (Home,Park)
+- Player color mappings (hex format validation)
+- Configuration structure validation
+
+✅ **Validation Tests** (testValidationLimits, testValidValues)
+- VALIDATION_LIMITS constants (player name ≤50, venue ≤100, rate limit 1000ms)
+- VALID_VALUES enums (winner values, game endings)
+- Magic number elimination verification
+
+✅ **Session Management** (testSessionIdGeneration, testSessionAssignment)
+- UUID format generation
+- Session boundary logic (time gap and venue change)
+- Session assignment for new matches
+
+✅ **Form Submission** (testAddRowValidation, testAddRowSuccess)
+- Required field enforcement
+- Player uniqueness (white ≠ black)
+- Winner validation (White|Black|Draw only)
+- Time limit required for "Time Out" ending
+- Successful match submission to spreadsheet
+
+✅ **Rate Limiting** (testRateLimiting)
+- 1-second cooldown between submissions
+- "Please wait before submitting again" error message
+
+✅ **Error Handling** (testErrorHandling)
+- handleError() function behavior
+- Error message preservation
+- Structured logging (logEvent calls)
+
+### Test Best Practices
+
+**When Making Code Changes:**
+
+1. **Run tests BEFORE making changes** - Establish baseline
+2. **Run tests AFTER each change** - Catch regressions immediately
+3. **Check execution logs** - Tests output detailed pass/fail messages
+4. **Review test data cleanup** - Ensure no test artifacts remain in spreadsheet
+
+**Test-Driven Development:**
+
+```javascript
+// Pattern for adding new validation:
+// 1. Add test first (it should fail)
+function testNewValidation() {
+  try {
+    addRow(['invalid', 'data', ...]);
+    assert(false, 'Should have thrown error');
+  } catch (error) {
+    assert(error.message.includes('expected message'), 'Error message check');
+  }
+}
+
+// 2. Implement validation in code.gs
+// 3. Run test again (should pass)
+```
+
+**Rate Limiting in Tests:**
+
+Tests include `Utilities.sleep(1100)` delays between `addRow()` calls to avoid rate limiting. When adding new form submission tests:
+
+```javascript
+// Clear rate limit before test
+PropertiesService.getScriptProperties().deleteProperty('lastSubmission');
+Utilities.sleep(1100);
+
+// Test code here
+addRow([...]);
+
+// Wait before next addRow call
+Utilities.sleep(1100);
+```
+
+**Test Data Cleanup:**
+
+Tests automatically clean up via `cleanupTestData()` called at end of `testAll()`:
+- Removes rows with "Test match" in notes column
+- Removes recent test sessions (last 5 Home sessions)
+- Cleans up orphaned SessionPlayers entries
+
+For manual cleanup: `manualCleanupAllTestData()`
+
+### What Tests DON'T Cover
+
+**Client-Side Interactions:**
+- Dropdown population with emoji prefixes
+- Dynamic field showing/hiding (Other player, Time limit)
+- Winner dropdown color updates
+- Camera/picture upload flow
+- Session display and analytics rendering
+- Form validation UI feedback
+
+**Integration Scenarios:**
+- End-to-end form submission through web app
+- Picture upload to Drive with sharing permissions
+- Multiple concurrent users / race conditions
+- Browser-specific rendering differences
+
+**Manual Testing Required:**
+- Deploy web app and submit real matches
+- Test picture upload with camera/files
+- Verify emoji colors display correctly (🟣🔵🟢)
+- Check session stats accuracy in UI
+- Test on multiple browsers (Chrome, Firefox, Safari, Mobile)
+
+**Edge Cases to Manually Verify:**
+- Player names exactly 50 characters
+- Venue names exactly 100 characters
+- Special characters in text fields
+- Mulligan venue detection and logic
+- Session boundary at exact time threshold
+- Empty spreadsheet initialization (first run)
+
+### Adding New Tests
+
+**Test Function Pattern:**
+
+```javascript
+function testNewFeature() {
+  Logger.log('\n--- Testing New Feature ---');
+  
+  try {
+    // Arrange
+    var input = 'test data';
+    
+    // Act
+    var result = newFeatureFunction(input);
+    
+    // Assert
+    assert(result !== null, 'Result should not be null');
+    assert(result.expected === true, 'Should have expected property');
+    
+  } catch (error) {
+    assert(false, 'Test threw unexpected error: ' + error.message);
+  }
+}
+```
+
+**Add to testAll():**
+
+```javascript
+function testAll() {
+  Logger.log('=== STARTING AUTOMATED TESTS ===');
+  testResults = { passed: 0, failed: 0, errors: [] };
+  
+  // ... existing tests ...
+  
+  // New Feature Tests
+  testNewFeature();
+  
+  printTestResults();
+  cleanupTestData();
+  return testResults;
+}
+```
+
+### Test Maintenance
+
+**Keep Tests Updated:**
+- When adding validation rules → add corresponding validation test
+- When changing error messages → update test assertions
+- When modifying configuration → update config tests
+- When refactoring → ensure all tests still pass
+
+**Test Failures as Documentation:**
+- Failed test = broken functionality
+- Test names should clearly describe what's being validated
+- Error messages should indicate expected vs actual behavior
+
+**Continuous Validation:**
+```bash
+# After every change:
+./deploy.sh && echo "Run testAll() in Apps Script Editor"
+```
 
 ## Form Structure
 
@@ -189,68 +460,20 @@ If form issues occur:
 4. Check browser developer console for JavaScript errors
 5. Look for "Chess Game Data" spreadsheet in Google Drive
 
-Agent guidance for working on the `chess-tracker` Google Apps Script project.
-
-Key facts:
-- Architecture: single-file client (`index.html`) + server (`code.gs`) deployed as a GAS web app.
-- Important server functions: `addRow(formData)`, `computeSessionStats(sessionId)`, `saveSessionSummary(sessionId)`, `getOrCreateSpreadsheet()`, `getCurrentSessionData(sessionId)`, `getAllSessions()`.
-- Logging: use `logEvent(eventName, data)` for structured logs; follow existing event naming.
-
-### Current Session Display Feature
-
-The chess tracker includes a real-time session statistics display at the top of the form:
-
-**Server Functions:**
-- `getCurrentSessionData(sessionId)`: Returns session statistics for a specific session ID, or the most recent session if not specified. Queries Sessions/SessionPlayers sheets
-- `getAllSessions()`: Returns array of all sessions with id, venue, startTime, and matchCount for dropdown population
-- `findSessionInSheet(sheet, sessionId)`: Helper to find session metadata from Sessions sheet
-- `findSessionPlayersInSheet(sheet, sessionId)`: Helper to find player stats from SessionPlayers sheet
-- `computeCurrentSessionFromMatches(sheet, sessionId)`: Fallback computation when summary sheets don't exist
-
-**Client Features:**
-- Session dropdown selector to view current or historical sessions (formatted as "date day time-of-day venue", e.g., "1/27 Tue Night Fortaleza del...")
-- Collapsible section showing venue, start time, match count
-- Player stats table (sorted by wins) with compact headers: M (matches), W (wins), L (losses), D (draws), 🗡️ (inflicted), 😭 (suffered)
-- Last match summary with time elapsed
-- Manual refresh button
-- Auto-refresh after successful form submission (refreshes both dropdown and current view)
-- Loading, error, and no-data states
-
-**Design:**
-- Expanded by default (user can collapse via header click)
-- Consistent dark theme with purple accents (#7c3aed)
-- Responsive table layout for mobile devices
-- Non-blocking: errors don't prevent form usage
-
-Data model and sheets:
-- `Matches` is the primary source-of-truth. Columns include `Timestamp`, `White Player`, `Black Player`, `Winner`, `Game Ending`, `Time Limit`, `Venue`, `Brutality`, `Notes`, `Picture URL`, `White Mulligan`, `Black Mulligan`, `Session ID`.
-- `Sessions` stores session-level aggregates (one row per session): Session ID, start/end times, match counts and totals.
-- `SessionPlayers` stores per-player per-session stats (one row per session+player) and includes color breakdowns (wins/losses/draws as White/Black), plus `Inflicted` and `Suffered` brutality totals.
-
-Important behaviours to preserve:
-- Session assignment: server uses `assignSessionIdForNewMatch(sheet, gapHours, venue)` which creates a new session if the time gap exceeds the configured threshold OR if the venue changes from the previous match.
-- Session summary errors must not prevent saving matches — `saveSessionSummary` is non-blocking and logs failures.
-- Picture uploads expect `data:image/...;base64,` data URIs and create Drive files with `file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW)`.
-- Script Properties: maintain keys `SPREADSHEET_ID` and `lastSubmission` (1-second rate limit).
-- Sheet header formatting: header rows are created with bold white text on `#4a90e2` background; preserve when changing header columns.
-
-When modifying data structures:
-- Prefer adding new sheets or columns rather than renaming existing ones to avoid breaking existing spreadsheets that may already be in use.
-- **Configuration System (v2.0.0+)**: Player names, venues, and mulligan settings are now fully configurable via Script Properties. The `getConfig()` function loads all configuration, and player/venue lists are dynamically populated on page load. No code changes needed to customize for different user groups.
-
-Developer workflow:
-- To deploy changes: run `clasp login` then `./deploy.sh` from the `chess-tracker` folder. Ensure `.clasp.json` has the correct `scriptId`.
-- Test by submitting the form and checking the `Matches` sheet; session summaries are created/updated in `Sessions` and `SessionPlayers`.
-
-When to ask the owner:
-- Before changing Drive sharing behavior or creating publicly-accessible files.
-- Before adding new OAuth scopes in `appsscript.json`.
-
 ## Development Principles
 
+- Edit `code.gs` and `index.html` directly for any changes
+- Test changes by copying files to Google Apps Script and deploying
+- All files are deployment-ready with no build process required
+- Simple, direct development workflow
 
 ## Alternative Development Workflow
 
 For developers preferring command-line tools, Google Clasp provides:
+- Local development with full IDE support
+- Command-line deployment (`clasp push`, `clasp deploy`)
+- TypeScript support for enhanced development
+- Better integration with Git workflows
+- Automated deployment capabilities
 
 See README.md for detailed Clasp setup instructions.

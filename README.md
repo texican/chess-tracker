@@ -28,6 +28,121 @@ clasp login
 
 Note: `deploy.sh` uses `clasp` and will push `code.gs`/`index.html`/`appsscript.json` and create/update a web deployment.
 
+## Testing
+
+### Automated Testing
+
+The project includes a comprehensive automated test suite to ensure code quality and catch regressions.
+
+#### Running Tests
+
+1. **Open Apps Script Editor**: Visit [script.google.com](https://script.google.com) and open your chess tracker project
+2. **Select Test Function**: In the function dropdown, choose either:
+   - `testAll()` - Complete test battery (44 tests, ~10 seconds)
+   - `quickTest()` - Fast smoke test (core functionality only)
+3. **Run Tests**: Click the ▶️ Run button
+4. **View Results**: Check Execution log (View → Logs or Ctrl+Enter)
+
+#### Test Coverage
+
+The automated tests validate:
+
+**Configuration & Setup**
+- ✅ Configuration loading from Script Properties
+- ✅ Default values (players, colors, venues, session gap)
+- ✅ Player color mappings (Carlos=#7c3aed, Carey=#00d4ff, Jorge=#10b981)
+- ✅ Validation constants and limits
+
+**Form Validation**
+- ✅ Required field enforcement
+- ✅ Player name uniqueness (white ≠ black)
+- ✅ Valid winner values (White|Black|Draw)
+- ✅ Time limit required for "Time Out" ending
+- ✅ Field length limits (players ≤50 chars, venue ≤100 chars)
+
+**Session Management**
+- ✅ Session ID generation (UUID format)
+- ✅ Session assignment logic
+- ✅ Session boundary detection (time gap and venue change)
+
+**Data Persistence**
+- ✅ Successful form submission to spreadsheet
+- ✅ Match data written to Matches sheet
+- ✅ Session stats computed and saved
+- ✅ Rate limiting (1-second cooldown between submissions)
+
+**Error Handling**
+- ✅ Structured error logging with `handleError()`
+- ✅ Error message preservation
+- ✅ Graceful failure modes
+
+#### Test Data Cleanup
+
+Tests automatically clean up after themselves:
+- Test matches are removed from Matches sheet (identified by "Test match" in notes)
+- Test sessions removed from Sessions sheet
+- Orphaned SessionPlayers entries cleaned up
+
+If cleanup fails, manually run `manualCleanupAllTestData()` from the Apps Script editor.
+
+#### Test Files
+
+- **test-suite.gs** - Server-side automated tests
+- **test-cleanup.gs** - Test data cleanup utilities
+- **test-client.html** - Client-side UI tests (deploy separately to test)
+
+### Manual Testing Checklist
+
+After code changes, verify:
+
+**Form Submission**
+- [ ] Submit valid match → success message appears
+- [ ] Player dropdowns show emoji colors (🟣 Carlos, 🔵 Carey, 🟢 Jorge)
+- [ ] Winner dropdown updates with correct players
+- [ ] "Other" player fields appear/disappear correctly
+- [ ] Time limit field required for "Time Out" ending
+
+**Session Display**
+- [ ] Current session stats display correctly
+- [ ] Session analytics update after match submission
+- [ ] Match history shows recent games
+- [ ] Player badges show correct colors
+
+**Edge Cases**
+- [ ] Picture upload works (camera or file)
+- [ ] Mulligan venue detection (creates venues list)
+- [ ] Very long player/venue names are handled
+- [ ] Rapid submissions blocked by rate limiting
+
+**Browser Testing**
+- [ ] Chrome/Edge (Chromium)
+- [ ] Firefox
+- [ ] Safari
+- [ ] Mobile browsers (iOS Safari, Chrome Mobile)
+
+### Testing Best Practices
+
+1. **Run `testAll()` after every code change** - Catches regressions immediately
+2. **Check execution logs** - Logs show exactly which tests failed and why
+3. **Test in multiple browsers** - GAS HTML rendering varies slightly
+4. **Submit real matches** - End-to-end testing catches issues automated tests miss
+5. **Review spreadsheet data** - Verify data format and calculations are correct
+6. **Monitor error logs** - Check Apps Script executions for production errors
+
+### Continuous Integration
+
+For automated testing on every commit:
+
+```bash
+# Push code to Apps Script
+clasp push
+
+# Run tests via Clasp (requires API executable setup)
+clasp run testAll
+```
+
+Note: `clasp run` requires the script to be deployed as an API executable. See [Clasp documentation](https://github.com/google/clasp) for setup.
+
 ## Spreadsheet / Data model
 The app stores everything in a Google Spreadsheet whose ID is kept in Script Properties (`SPREADSHEET_ID`). If missing, the app will search Drive by name (`Friend Chess Games`) or create a new spreadsheet.
 
@@ -305,12 +420,31 @@ Set these properties in Google Apps Script → Project Settings → Script Prope
 
 ### Configuration Examples
 
-**Example 1: Different Players**
+**Script Properties Reference**
+
+All configuration is stored in **Project Settings > Script Properties** in the Apps Script editor.
+
+| Property | Format | Example | Description |
+|----------|--------|---------|-------------|
+| `PLAYERS` | Comma-separated names | `Carlos,Carey,Jorge` | List of player names for dropdowns |
+| `PLAYER_COLORS` | Name:HexColor pairs | `Carlos:#7c3aed,Carey:#00d4ff,Jorge:#10b981` | Hex color codes for each player |
+| `PLAYER_EMOJIS` | Name:Emoji pairs | `Carlos:🟣,Carey:🔵,Jorge:🟢` | Emoji visual identifiers for each player |
+| `VENUES` | Comma-separated locations | `Home,Park,Coffee Shop` | List of venue options |
+| `MULLIGAN_VENUES` | Comma-separated venues | `Home,Chess Club` | Venues where mulligan tracking appears |
+| `SESSION_GAP_HOURS` | Number | `6` | Hours between matches to start new session |
+
+**Example 1: Different Players with Colors and Emojis**
 ```
 Property: PLAYERS
 Value: Alice,Bob,Charlie,Diana
+
+Property: PLAYER_COLORS
+Value: Alice:#7c3aed,Bob:#00d4ff,Charlie:#10b981,Diana:#f59e0b
+
+Property: PLAYER_EMOJIS
+Value: Alice:🟣,Bob:🔵,Charlie:🟢,Diana:🟠
 ```
-This will populate the player dropdowns with Alice, Bob, Charlie, and Diana.
+This will populate the player dropdowns with colored emoji prefixes (🟣 Alice, 🔵 Bob, 🟢 Charlie, 🟠 Diana).
 
 **Example 2: Custom Venues**
 ```
