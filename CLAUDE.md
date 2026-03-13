@@ -353,6 +353,9 @@ The application uses Google Apps Script's Properties Service for persistent conf
 - `VENUES`: Comma-separated list of venue names (default: Home,Park)
 - `MULLIGAN_VENUES`: Comma-separated list of venues where mulligan is allowed (default: none)
 - `SESSION_GAP_HOURS`: Number of hours between matches to start a new session (default: 6)
+- `LAST_STABLE_VERSION`: Human-readable stable version label (e.g. "138"), set via admin panel or `adminSetStableVersion()`
+
+**Naming Convention:** All Script Property keys use SCREAMING_SNAKE_CASE.
 
 **Implementation:**
 ```javascript
@@ -441,12 +444,34 @@ Chess Game Data Spreadsheet Columns:
 
 ## Deployment Process
 
+### Using deploy.sh (preferred)
+```bash
+cd chess-tracker
+./deploy.sh
+```
+- Requires a **clean git working tree** — fails with error if uncommitted changes exist
+- Embeds git commit hash in deployment description for traceability: `Deployment 2026-03-13 14:22:01 git:abc1234`
+- Cleans up old deployments, always keeping: (1) most recent, (2) pinned stable
+- Opens the new deployment URL in the browser automatically
+
+### Stable Version Management
+The deploy script reads `.stable-deployment` to determine which deployment ID to protect from cleanup.
+
+**To pin a new stable version:**
+1. Confirm the deployment is working correctly
+2. Update `.stable-deployment` with the deployment ID (e.g. `AKfycbwu...`)
+3. Set `LAST_STABLE_VERSION` in the admin panel (display label only, e.g. "138")
+
+**Stable selection logic:**
+- If `.stable-deployment` contains a valid `AK...` ID that exists in GAS: use it (pinned)
+- If file is missing/empty/invalid: fall back to the oldest deployment ≥8 hours older than most recent
+
+### Manual Deployment (fallback)
 1. Copy `code.gs` to Google Apps Script project
-2. Copy `index.html` to Google Apps Script as HTML file named "index"
-3. Copy `admin-panel.html` to Google Apps Script as HTML file named "admin-panel"
+2. Copy `index.html` as HTML file named "index"
+3. Copy `admin-panel.html` as HTML file named "admin-panel"
 4. Deploy as Web App with "Execute as: Me" and "Access: Anyone"
-5. Test form submission - should display success message and reset form
-6. Test admin panel access with `?admin=true` parameter
+5. Test form submission and admin panel (`?admin=true`)
 
 ## Admin Panel
 
@@ -515,6 +540,15 @@ All functions check `isScriptOwner()` first, throw error if unauthorized.
 - Returns: `{ success: true, message: 'Configuration saved successfully' }`
 - Logs all saves with user email to `logEvent()`
 
+**adminGetStableVersion():**
+- Returns `{ stableVersion }` from `LAST_STABLE_VERSION` Script Property
+- No parameters
+
+**adminSetStableVersion(version):**
+- Saves a human-readable version label (e.g. "138") to `LAST_STABLE_VERSION`
+- Owner-only, logged
+- Note: this is display-only; the actual deployment protection uses `.stable-deployment` file
+
 ### Future Enhancements
 
 **Phase 2 - Sessions & Data (Planned):**
@@ -569,6 +603,26 @@ All functions check `isScriptOwner()` first, throw error if unauthorized.
 - New players appear in dropdowns
 - New venues appear in venue dropdown
 - Session gap affects new session creation
+
+## Session & Venue Relationship
+
+Session assignment logic (`assignSessionIdForNewMatch`, code.gs:546):
+1. **Venue change** → always starts a new session (checked first, regardless of time)
+2. **Time gap** → starts a new session if elapsed time > `SESSION_GAP_HOURS`
+3. Otherwise → reuses the existing session ID from the last match row
+
+**Important:** The **Sessions sheet does not store venue**. Its columns are:
+`Session ID | Start Time | End Time | Matches | White Wins | Black Wins | Draws | Avg Brutality | Last Updated`
+
+All matches within a session implicitly share the same venue (enforced by assignment logic), but to find a session's venue you must cross-reference the Matches sheet. Adding a Venue column to the Sessions sheet is a known potential improvement.
+
+Edge case: if either `currentVenue` or the last row's venue is empty/falsy, the venue check is skipped and only the time gap applies.
+
+## BackupMatches Sheet
+
+- Timestamp is the **last** column (Backup Timestamp), not the first
+- Column order: Original Timestamp, White Player, Black Player, Winner, Game Ending, Time Limit, Venue, Brutality, Notes, Picture URL, White Mulligan, Black Mulligan, Session ID, **Backup Timestamp**
+- Bug history: was previously prepended (first column), causing all values to shift right — fixed 2026-03-13
 
 ## Data Storage
 
