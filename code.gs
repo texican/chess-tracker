@@ -570,6 +570,27 @@ function assignSessionIdForNewMatch(sheet, gapHours, currentVenue) {
   return info.sessionId;
 }
 
+/**
+ * Scans the Matches sheet for any row in the given session that has a non-empty venue.
+ * Used to infer venue when a submission arrives with a blank venue field.
+ * @param {Sheet} sheet - The Matches sheet
+ * @param {string} sessionId
+ * @returns {string} Venue name, or empty string if not found
+ */
+function inferVenueFromSession(sheet, sessionId) {
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var sidCol = headers.indexOf('Session ID');
+  var venueCol = headers.indexOf('Venue');
+  if (sidCol === -1 || venueCol === -1) return '';
+  for (var r = 1; r < data.length; r++) {
+    if ((data[r][sidCol] || '').toString() === sessionId && data[r][venueCol]) {
+      return data[r][venueCol].toString();
+    }
+  }
+  return '';
+}
+
 // ===== FORM SUBMISSION & VALIDATION =====
 
 /**
@@ -626,7 +647,7 @@ function addRow(formData) {
       throw new Error('Game ending is required');
     }
     
-    const venue = (formData[5] || '').toString().trim();
+    let venue = (formData[5] || '').toString().trim();
     if (venue.length > VALIDATION_LIMITS.VENUE_MAX) {
       throw new Error(`Venue must be less than ${VALIDATION_LIMITS.VENUE_MAX} characters`);
     }
@@ -727,6 +748,15 @@ function addRow(formData) {
     }
     logEvent('session_assigned', { sessionId: sessionId, clientProvided: !!clientSessionId, venue: venue });
 
+    // If venue was not provided, infer it from other matches in the same session
+    if (!venue && sessionId) {
+      var inferredVenue = inferVenueFromSession(sheet, sessionId);
+      if (inferredVenue) {
+        venue = inferredVenue;
+        logEvent('venue_inferred_from_session', { sessionId: sessionId, venue: venue });
+      }
+    }
+
     // Prepare sanitized row data with timestamp
     const rowData = [
       new Date(),
@@ -819,7 +849,7 @@ function computeSessionStats(sessionId) {
   const tsCol = col['Timestamp'];
 
   let matches = 0, whiteWins = 0, blackWins = 0, draws = 0, brutalitySum = 0;
-  let startTime = null, endTime = null;
+  let startTime = null, endTime = null, sessionVenue = '';
 
   // Per-player session stats using configured players
   const config = getConfig();
@@ -866,6 +896,11 @@ function computeSessionStats(sessionId) {
       if (!startTime || ts < startTime) startTime = ts;
       if (!endTime || ts > endTime) endTime = ts;
     }
+    // Capture venue from first row in this session that has one
+    if (!sessionVenue && col['Venue'] !== undefined) {
+      var rowVenue = (row[col['Venue']] || '').toString();
+      if (rowVenue) sessionVenue = rowVenue;
+    }
     // Per-player counting and brutality attribution
     const whiteName = (row[col['White Player']] || '').toString();
     const blackName = (row[col['Black Player']] || '').toString();
@@ -906,7 +941,8 @@ function computeSessionStats(sessionId) {
     draws: draws,
     avgBrutality: avgBrutality,
     startTime: startTime ? startTime.toISOString() : null,
-    endTime: endTime ? endTime.toISOString() : null
+    endTime: endTime ? endTime.toISOString() : null,
+    venue: sessionVenue
   };
 
   // Attach per-player aggregated stats
@@ -947,7 +983,7 @@ function saveSessionSummary(sessionId) {
 
     // Ensure session-level headers
     if (sheet.getLastRow() === 0) {
-      const headers = ['Session ID', 'Start Time', 'End Time', 'Matches', 'White Wins', 'Black Wins', 'Draws', 'Avg Brutality', 'Last Updated'];
+      const headers = ['Session ID', 'Venue', 'Start Time', 'End Time', 'Matches', 'White Wins', 'Black Wins', 'Draws', 'Avg Brutality', 'Last Updated'];
       sheet.appendRow(headers);
       const headerRange = sheet.getRange(1, 1, 1, headers.length);
       headerRange.setFontWeight('bold');
@@ -968,6 +1004,7 @@ function saveSessionSummary(sessionId) {
     const nowIso = new Date().toISOString();
     const sessionValues = [
       stats.sessionId,
+      stats.venue || '',
       stats.startTime || '',
       stats.endTime || '',
       stats.matches,

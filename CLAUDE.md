@@ -611,12 +611,14 @@ Session assignment logic (`assignSessionIdForNewMatch`, code.gs:546):
 2. **Time gap** → starts a new session if elapsed time > `SESSION_GAP_HOURS`
 3. Otherwise → reuses the existing session ID from the last match row
 
-**Important:** The **Sessions sheet does not store venue**. Its columns are:
-`Session ID | Start Time | End Time | Matches | White Wins | Black Wins | Draws | Avg Brutality | Last Updated`
+The **Sessions sheet** columns are:
+`Session ID | Venue | Start Time | End Time | Matches | White Wins | Black Wins | Draws | Avg Brutality | Last Updated`
 
-All matches within a session implicitly share the same venue (enforced by assignment logic), but to find a session's venue you must cross-reference the Matches sheet. Adding a Venue column to the Sessions sheet is a known potential improvement.
+Venue is derived from the first match in the session that has a non-empty venue value (`computeSessionStats()`). All matches within a session implicitly share the same venue (enforced by assignment logic), but the Sessions sheet now caches it for direct lookup and for YTD `venueCount` stats.
 
-Edge case: if either `currentVenue` or the last row's venue is empty/falsy, the venue check is skipped and only the time gap applies.
+**Blank venue handling:** If a match is submitted with a blank venue but an active session ID, `addRow()` calls `inferVenueFromSession()` to look up the venue from any other match in that session and fills it in before writing the row. This handles multi-device logging where venue auto-population may fail on a second device.
+
+Edge case: if a session's venue is truly unknown (all rows blank), Sessions.Venue stays empty and can be corrected via admin backfill.
 
 ## BackupMatches Sheet
 
