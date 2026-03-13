@@ -260,7 +260,7 @@ Session data are computed from `Matches` by `computeSessionStats(sessionId)` and
 ## Properties & Rate limiting
 - Script Properties keys used:
    - `SPREADSHEET_ID` — target spreadsheet ID
-   - `lastSubmission` — timestamp used to enforce a 1 second cooldown between submissions
+   - `LAST_SUBMISSION` — timestamp used to enforce a 1 second cooldown between submissions
 
 ## Notes for maintainers
 - Logging: Use `logEvent(eventName, data)` for structured logs.
@@ -448,8 +448,8 @@ This application uses Google Apps Script's **Properties Service** for persistent
 #### Rate Limiting
 ```javascript
 // Store last submission timestamp to prevent spam
-PropertiesService.getScriptProperties().setProperty('lastSubmission', now.toString());
-const lastSubmission = PropertiesService.getScriptProperties().getProperty('lastSubmission');
+PropertiesService.getScriptProperties().setProperty('LAST_SUBMISSION', now.toString());
+const LAST_SUBMISSION = PropertiesService.getScriptProperties().getProperty('LAST_SUBMISSION');
 ```
 
 #### Spreadsheet ID Management
@@ -461,7 +461,7 @@ let spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADS
 
 **Properties Stored:**
 - `SPREADSHEET_ID` - ID of the Google Sheet used for data storage
-- `lastSubmission` - Timestamp of last form submission for rate limiting
+- `LAST_SUBMISSION` - Timestamp of last form submission for rate limiting
 
 ## ⚙️ Configuration
 

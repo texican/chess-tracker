@@ -62,25 +62,58 @@ if [ "$DEPLOYMENT_COUNT" -gt 1 ]; then
 
     echo "🔹 Most recent: $MOST_RECENT_ID ($MOST_RECENT_TIME)"
 
-    # Find the first deployment that's at least 8 hours (28800 seconds) older
+    # Check for a pinned stable deployment in .stable-deployment file
     STABLE_ID=""
     STABLE_TIME=""
-    EIGHT_HOURS=28800
+    STABLE_SOURCE=""
 
-    for deployment in "${SORTED_DEPLOYMENTS[@]:1}"; do
-        epoch=$(echo "$deployment" | cut -d'|' -f1)
-        dep_id=$(echo "$deployment" | cut -d'|' -f2)
-        timestamp=$(echo "$deployment" | cut -d'|' -f3)
-
-        age_diff=$((MOST_RECENT_EPOCH - epoch))
-
-        if [ "$age_diff" -ge "$EIGHT_HOURS" ]; then
-            STABLE_ID="$dep_id"
-            STABLE_TIME="$timestamp"
-            echo "🔹 Stable version: $STABLE_ID ($STABLE_TIME) - $((age_diff / 3600))h older"
-            break
+    STABLE_FILE="$(dirname "$0")/.stable-deployment"
+    if [ -f "$STABLE_FILE" ]; then
+        PINNED_ID=$(grep -v '^#' "$STABLE_FILE" | tr -d '[:space:]')
+        if [[ -n "$PINNED_ID" && "$PINNED_ID" =~ ^AK[a-zA-Z0-9_-]+$ ]]; then
+            # Verify the pinned ID still exists in the deployment list
+            for deployment in "${SORTED_DEPLOYMENTS[@]}"; do
+                dep_id=$(echo "$deployment" | cut -d'|' -f2)
+                timestamp=$(echo "$deployment" | cut -d'|' -f3)
+                if [ "$dep_id" == "$PINNED_ID" ]; then
+                    STABLE_ID="$PINNED_ID"
+                    STABLE_TIME="$timestamp"
+                    STABLE_SOURCE="pinned"
+                    break
+                fi
+            done
+            if [ -z "$STABLE_ID" ]; then
+                echo "⚠️  Pinned stable deployment $PINNED_ID not found in current deployments — falling back to age-based selection"
+            fi
+        else
+            echo "⚠️  .stable-deployment file contains invalid ID '$PINNED_ID' — falling back to age-based selection"
         fi
-    done
+    fi
+
+    # Fall back to 8-hour heuristic if no valid pinned stable
+    if [ -z "$STABLE_ID" ]; then
+        EIGHT_HOURS=28800
+        for deployment in "${SORTED_DEPLOYMENTS[@]:1}"; do
+            epoch=$(echo "$deployment" | cut -d'|' -f1)
+            dep_id=$(echo "$deployment" | cut -d'|' -f2)
+            timestamp=$(echo "$deployment" | cut -d'|' -f3)
+
+            age_diff=$((MOST_RECENT_EPOCH - epoch))
+
+            if [ "$age_diff" -ge "$EIGHT_HOURS" ]; then
+                STABLE_ID="$dep_id"
+                STABLE_TIME="$timestamp"
+                STABLE_SOURCE="age-based ($((age_diff / 3600))h older)"
+                break
+            fi
+        done
+    fi
+
+    if [ -n "$STABLE_ID" ]; then
+        echo "🔒 Stable version: $STABLE_ID ($STABLE_TIME) [$STABLE_SOURCE]"
+    else
+        echo "📊 No stable version identified — only keeping most recent"
+    fi
 
     # Delete all deployments except most recent and stable
     DELETED_COUNT=0

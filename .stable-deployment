@@ -1,0 +1,7 @@
+# Last stable deployment ID — used by deploy.sh to protect this deployment from cleanup.
+# Update this with the AKfycby... deployment ID whenever you tag a new stable version.
+# The version label (human-readable) is tracked separately in Script Properties (LAST_STABLE_VERSION).
+# Current stable: version 137
+# To find the deployment ID: clasp deployments
+#
+# AKfycby...your-deployment-id-here

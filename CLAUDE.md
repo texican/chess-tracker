@@ -192,7 +192,7 @@ Tests include `Utilities.sleep(1100)` delays between `addRow()` calls to avoid r
 
 ```javascript
 // Clear rate limit before test
-PropertiesService.getScriptProperties().deleteProperty('lastSubmission');
+PropertiesService.getScriptProperties().deleteProperty('LAST_SUBMISSION');
 Utilities.sleep(1100);
 
 // Test code here
@@ -348,7 +348,7 @@ The application uses Google Apps Script's Properties Service for persistent conf
 
 **Properties Stored:**
 - `SPREADSHEET_ID`: ID of the target Google Sheet for data storage
-- `lastSubmission`: Timestamp of last form submission (rate limiting)
+- `LAST_SUBMISSION`: Timestamp of last form submission (rate limiting)
 - `PLAYERS`: Comma-separated list of player names for dropdowns (default: Player 1,Player 2,Player 3)
 - `VENUES`: Comma-separated list of venue names (default: Home,Park)
 - `MULLIGAN_VENUES`: Comma-separated list of venues where mulligan is allowed (default: none)
@@ -357,11 +357,11 @@ The application uses Google Apps Script's Properties Service for persistent conf
 **Implementation:**
 ```javascript
 // Rate limiting (1-second cooldown)
-const lastSubmission = PropertiesService.getScriptProperties().getProperty('lastSubmission');
-if (lastSubmission && (now - parseInt(lastSubmission)) < 1000) {
+const LAST_SUBMISSION = PropertiesService.getScriptProperties().getProperty('LAST_SUBMISSION');
+if (LAST_SUBMISSION && (now - parseInt(LAST_SUBMISSION)) < 1000) {
   throw new Error('Please wait before submitting again');
 }
-PropertiesService.getScriptProperties().setProperty('lastSubmission', now.toString());
+PropertiesService.getScriptProperties().setProperty('LAST_SUBMISSION', now.toString());
 
 // Spreadsheet ID management with fallbacks
 let spreadsheetId = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');

@@ -234,7 +234,7 @@ function testAddRowValidation() {
   Logger.log('\n--- Testing Form Validation ---');
   
   // Clear rate limit before starting
-  PropertiesService.getScriptProperties().deleteProperty('lastSubmission');
+  PropertiesService.getScriptProperties().deleteProperty('LAST_SUBMISSION');
   Utilities.sleep(100);
   
   try {
@@ -298,7 +298,7 @@ function testAddRowSuccess() {
   Logger.log('\n--- Testing Successful Form Submission ---');
   
   // Clear rate limit and wait for cooldown
-  PropertiesService.getScriptProperties().deleteProperty('lastSubmission');
+  PropertiesService.getScriptProperties().deleteProperty('LAST_SUBMISSION');
   Utilities.sleep(1100);
   
   try {
@@ -340,7 +340,7 @@ function testRateLimiting() {
     var props = PropertiesService.getScriptProperties();
     
     // Set last submission to now
-    props.setProperty('lastSubmission', Date.now().toString());
+    props.setProperty('LAST_SUBMISSION', Date.now().toString());
     
     // Try to submit immediately (should fail)
     var formData = ['Player1', 'Player2', 'White', 'Checkmate', '5:00', 'Home', '1', 'test'];
@@ -353,7 +353,7 @@ function testRateLimiting() {
     }
     
     // Clear rate limit for future tests
-    props.deleteProperty('lastSubmission');
+    props.deleteProperty('LAST_SUBMISSION');
     
   } catch (error) {
     assert(false, 'Rate limiting test threw error: ' + error.message);

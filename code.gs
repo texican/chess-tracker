@@ -387,6 +387,54 @@ function adminSaveConfig(newConfig) {
   }
 }
 
+// ===== STABLE VERSION MANAGEMENT =====
+
+/**
+ * Admin API: Get the last stable version label
+ * Owner-only access
+ * @returns {Object} Stable version info
+ */
+function adminGetStableVersion() {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+  var props = PropertiesService.getScriptProperties();
+  return {
+    stableVersion: props.getProperty('LAST_STABLE_VERSION') || ''
+  };
+}
+
+/**
+ * Admin API: Set the last stable version label
+ * This is a human-readable tag (e.g. "137") that corresponds to the deployment
+ * recorded in the .stable-deployment file used by deploy.sh.
+ * Owner-only access
+ * @param {string} version - Version label to mark as stable
+ * @returns {Object} Success response
+ */
+function adminSetStableVersion(version) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  var versionStr = (version || '').toString().trim();
+  if (versionStr.length === 0) {
+    throw new Error('Version label cannot be empty');
+  }
+  if (versionStr.length > 50) {
+    throw new Error('Version label must be 50 characters or fewer');
+  }
+
+  PropertiesService.getScriptProperties().setProperty('LAST_STABLE_VERSION', versionStr);
+
+  logEvent('admin_set_stable_version', {
+    version: versionStr,
+    user: Session.getEffectiveUser().getEmail()
+  });
+
+  return { success: true, message: 'Stable version set to ' + versionStr };
+}
+
 // ===== BACKUP MANAGEMENT =====
 
 /**
@@ -407,7 +455,6 @@ function backupMatch(rowData) {
     // Add headers if this is a new sheet
     if (backupSheet.getLastRow() === 0) {
       const headers = [
-        'Backup Timestamp',
         'Original Timestamp',
         'White Player',
         'Black Player',
@@ -420,7 +467,8 @@ function backupMatch(rowData) {
         'Picture URL',
         'White Mulligan',
         'Black Mulligan',
-        'Session ID'
+        'Session ID',
+        'Backup Timestamp'
       ];
       backupSheet.appendRow(headers);
       
@@ -431,8 +479,8 @@ function backupMatch(rowData) {
       headerRange.setFontColor('white');
     }
     
-    // Prepend backup timestamp to the row data
-    const backupRow = [new Date()].concat(rowData);
+    // Append backup timestamp as the last column
+    const backupRow = rowData.concat([new Date()]);
     backupSheet.appendRow(backupRow);
     
     logEvent('match_backed_up', { 
@@ -533,12 +581,12 @@ function assignSessionIdForNewMatch(sheet, gapHours, currentVenue) {
 function addRow(formData) {
   try {
     // Rate limiting - prevent spam submissions
-    const lastSubmission = PropertiesService.getScriptProperties().getProperty('lastSubmission');
+    const lastSubmission = PropertiesService.getScriptProperties().getProperty('LAST_SUBMISSION');
     const now = Date.now();
     if (lastSubmission && (now - parseInt(lastSubmission)) < VALIDATION_LIMITS.RATE_LIMIT_MS) {
       throw new Error('Please wait before submitting again');
     }
-    PropertiesService.getScriptProperties().setProperty('lastSubmission', now.toString());
+    PropertiesService.getScriptProperties().setProperty('LAST_SUBMISSION', now.toString());
     
     logEvent('form_submission_attempt', { dataLength: formData ? formData.length : 0 });
     

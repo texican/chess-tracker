@@ -535,6 +535,19 @@
         <small>Hours between matches to start a new session</small>
       </div>
 
+      <!-- Stable Deployment -->
+      <div class="form-group">
+        <label>Last Stable Version:</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="text" id="stable-version" placeholder="e.g. 137" style="max-width:120px;">
+          <button class="btn btn-secondary btn-small" id="stable-btn" onclick="saveStableVersion()">
+            <span id="stable-btn-text">Mark as Stable</span>
+          </button>
+        </div>
+        <small>The GAS deployment version to keep pinned in deploy.sh. Update .stable-deployment file with the matching deployment ID.</small>
+        <div id="stable-alert" class="alert" style="margin-top:8px;"></div>
+      </div>
+
       <!-- Action Buttons -->
       <div class="button-group">
         <button class="btn btn-primary" id="save-btn" onclick="saveConfiguration()">
@@ -639,6 +652,49 @@
           showAlert('Error loading configuration: ' + error.message, 'error');
         })
         .adminGetConfig();
+
+      // Load stable version independently
+      google.script.run
+        .withSuccessHandler(function(result) {
+          document.getElementById('stable-version').value = result.stableVersion || '';
+        })
+        .withFailureHandler(function(error) {
+          // Non-critical — leave field blank
+        })
+        .adminGetStableVersion();
+    }
+
+    function saveStableVersion() {
+      var version = document.getElementById('stable-version').value.trim();
+      if (!version) {
+        showStableAlert('Please enter a version label', 'error');
+        return;
+      }
+
+      var btn = document.getElementById('stable-btn');
+      var btnText = document.getElementById('stable-btn-text');
+      btn.disabled = true;
+      btnText.textContent = 'Saving...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          btnText.textContent = 'Mark as Stable';
+          showStableAlert('Stable version set to ' + version + '. Remember to update .stable-deployment with the deployment ID.', 'success');
+        })
+        .withFailureHandler(function(error) {
+          btn.disabled = false;
+          btnText.textContent = 'Mark as Stable';
+          showStableAlert('Error: ' + error.message, 'error');
+        })
+        .adminSetStableVersion(version);
+    }
+
+    function showStableAlert(message, type) {
+      var el = document.getElementById('stable-alert');
+      el.textContent = message;
+      el.className = 'alert alert-' + type;
+      el.style.display = 'block';
     }
 
     function renderPlayerList(players, colors, emojis) {
