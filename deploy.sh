@@ -25,6 +25,15 @@ if ! clasp status &> /dev/null; then
     exit 1
 fi
 
+# Require a clean git working tree so every deployment traces to a committed state
+if ! git diff --quiet || ! git diff --cached --quiet; then
+    echo "❌ Error: Uncommitted changes detected. Commit or stash before deploying."
+    git status --short
+    exit 1
+fi
+GIT_HASH=$(git rev-parse --short HEAD)
+echo "🔗 Git commit: $GIT_HASH"
+
 echo "📤 Pushing files to Google Apps Script..."
 clasp push --force
 
@@ -138,7 +147,7 @@ else
 fi
 
 echo "🔧 Creating new deployment..."
-DEPLOYMENT_OUTPUT=$(clasp deploy --description "Deployment $(date '+%Y-%m-%d %H:%M:%S')")
+DEPLOYMENT_OUTPUT=$(clasp deploy --description "Deployment $(date '+%Y-%m-%d %H:%M:%S') git:$GIT_HASH")
 echo "$DEPLOYMENT_OUTPUT"
 
 # Extract deployment ID from output
