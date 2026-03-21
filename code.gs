@@ -192,7 +192,7 @@ function serveAdminPanel(e) {
     return HtmlService.createHtmlOutput(
       '<h1>Access Denied</h1>' +
       '<p>Admin panel is only accessible to the script owner.</p>' +
-      '<p><a href="' + baseUrl + '">← Back to Form</a></p>'
+      '<p><a href="' + baseUrl + '" target="_top">← Back to Form</a></p>'
     ).setTitle('Access Denied');
   }
 
