@@ -488,7 +488,7 @@
     <div class="admin-header-right">
       <span id="admin-user">👤 Loading...</span>
       <span>|</span>
-      <a href="#" onclick="goBackToForm(); return false;">← Back to Form</a>
+      <a href="<?= scriptUrl ?>">← Back to Form</a>
     </div>
   </div>
 
@@ -610,13 +610,6 @@
     });
 
     // ===== NAVIGATION =====
-
-    function goBackToForm() {
-      // Remove ?admin=true parameter and navigate to the form
-      var url = window.location.href;
-      var baseUrl = url.split('?')[0];
-      window.top.location.href = baseUrl;
-    }
 
     function showSection(section) {
       // Update nav buttons

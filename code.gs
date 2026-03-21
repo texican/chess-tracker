@@ -163,7 +163,9 @@ function doGet(e) {
     // Regular form
     logEvent('form_served', { parameters: e.parameter, userAgent: e.parameter.userAgent });
 
-    return HtmlService.createHtmlOutputFromFile('index')
+    var template = HtmlService.createTemplateFromFile('index');
+    template.scriptUrl = ScriptApp.getService().getUrl();
+    return template.evaluate()
       .setTitle('Chess Game Tracker')
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 
@@ -186,10 +188,11 @@ function serveAdminPanel(e) {
       user: Session.getEffectiveUser().getEmail()
     });
 
+    var baseUrl = ScriptApp.getService().getUrl();
     return HtmlService.createHtmlOutput(
       '<h1>Access Denied</h1>' +
       '<p>Admin panel is only accessible to the script owner.</p>' +
-      '<p><a href="?">← Back to Form</a></p>'
+      '<p><a href="' + baseUrl + '">← Back to Form</a></p>'
     ).setTitle('Access Denied');
   }
 
@@ -198,7 +201,9 @@ function serveAdminPanel(e) {
     user: Session.getEffectiveUser().getEmail()
   });
 
-  return HtmlService.createHtmlOutputFromFile('admin-panel')
+  var template = HtmlService.createTemplateFromFile('admin-panel');
+  template.scriptUrl = ScriptApp.getService().getUrl();
+  return template.evaluate()
     .setTitle('Admin Panel - Chess Tracker')
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
