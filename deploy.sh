@@ -147,7 +147,9 @@ else
 fi
 
 echo "🔧 Creating new deployment..."
-DEPLOYMENT_OUTPUT=$(clasp deploy --description "Deployment $(date '+%Y-%m-%d %H:%M:%S') git:$GIT_HASH")
+# Extract version from code.gs for deployment description
+VERSION=$(grep -m1 "const VERSION" code.gs | sed "s/.*'\([^']*\)'.*/\1/" || echo "unknown")
+DEPLOYMENT_OUTPUT=$(clasp deploy --description "Chess Tracker v$VERSION - $(date '+%Y-%m-%d %H:%M:%S') git:$GIT_HASH")
 echo "$DEPLOYMENT_OUTPUT"
 
 # Extract deployment ID from output
