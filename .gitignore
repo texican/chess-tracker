@@ -6,3 +6,8 @@
 
 # Local configuration
 CLAUDE.local.md
+# Node modules
+/node_modules
+
+# IDE configuration
+jsconfig.json

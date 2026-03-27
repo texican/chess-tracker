@@ -349,8 +349,8 @@ Making changes to the form is simple:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/texican/personal-web-forms.git
-   cd personal-web-forms/chess-tracker
+   git clone https://github.com/texican/chess-tracker.git
+   cd chess-tracker
    ```
 
 2. **Edit files directly**:
@@ -652,7 +652,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙋‍♂️ Support
 
-- **Issues**: [GitHub Issues](https://github.com/texican/personal-web-forms/issues)
+- **Issues**: [GitHub Issues](https://github.com/texican/chess-tracker/issues)
 - **Deployment Help**: See deployment section above for detailed instructions
 - **Google Apps Script Docs**: [developers.google.com/apps-script](https://developers.google.com/apps-script)
 
