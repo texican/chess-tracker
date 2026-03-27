@@ -416,6 +416,67 @@ if (sheet.getLastRow() === 0) {
 - Client-side validation with floating bubble feedback
 - Visual result selection with radio buttons
 - Two-column responsive layout for ratings and platform fields
+- Live session stats display with session selector dropdown
+
+## Live Session Stats Display
+
+Real-time session statistics displayed at the top of the form interface.
+
+### Server-Side Functions (code.gs)
+
+**`getCurrentSessionData(sessionId)`** (line 1342)
+- Returns session metadata, player stats, and match breakdown
+- If `sessionId` is null, uses most recent session
+- Falls back to `computeCurrentSessionFromMatches()` if Sessions/SessionPlayers sheets don't exist
+- Returns: `{ sessionId, venue, startTime, matchCount, playerStats, whiteWins, blackWins, draws, lastMatch }`
+
+**`getYearToDateStats()`**
+- Aggregates all sessions from current year
+- Returns combined player stats with session count
+- Used when session selector is set to "Year to Date"
+
+**`computeCurrentSessionFromMatches(sheet, sessionId)`** (line 1668)
+- Fallback function that computes stats directly from Matches sheet
+- Used when pre-computed Sessions/SessionPlayers sheets are unavailable
+- Iterates all matches with matching session ID
+
+**Helper Functions:**
+- `findSessionInSheet(sheet, sessionId)` - Finds session row in Sessions sheet
+- `findSessionPlayersInSheet(sheet, sessionId)` - Finds all player stats for a session
+
+### Client-Side Implementation (index.html)
+
+**Session Selector** (line 1760)
+```html
+<select id="session-selector" onchange="onSessionChange()">
+  <option value="">Most Recent Session</option>
+  <option value="ytd">Year to Date</option>
+  <!-- Past sessions populated dynamically -->
+</select>
+```
+
+**Key Functions:**
+- `loadCurrentSession(event)` (line 2872) - Fetches and displays session data
+- `onSessionChange()` (line 2862) - Handles session selector changes
+- `populateColorBreakdown(sessionData)` (line 3020) - Renders white/black/draw bar
+- `populateStatsTable(playerStats)` - Renders player stats with win percentages
+- `getPercentageClass(percent)` (line 3013) - Returns CSS class for win% coloring
+
+**Auto-refresh:** Called after form submission at line 2866
+
+### UI Components
+
+1. **Session Description**: "3/15 12 Matches at Home on a Saturday afternoon"
+2. **Color Breakdown Bar**: Visual white/black/draw distribution with counts
+3. **Player Stats Table**: Sortable by wins, shows W/L/D, win%, brutality
+4. **Loading/Error/No-Data States**: Handled gracefully with user feedback
+
+### Responsive Design
+
+Uses CSS `clamp()` extensively:
+- Stats table: 6 breakpoints (768px, 600px, 500px, 430px, 350px, 299px)
+- Font sizes scale with container width
+- Padding/gaps adapt to available space
 
 ## Chess-Specific Features
 

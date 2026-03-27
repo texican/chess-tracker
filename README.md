@@ -99,6 +99,36 @@ The chess tracker includes an owner-only admin panel for managing configuration 
 - Clear browser cache if needed
 - Verify changes saved successfully (look for success message)
 
+## Live Session Stats
+
+The chess tracker displays real-time statistics for the current session directly in the form interface.
+
+### Features
+
+- **Session Selector Dropdown**: Switch between viewing current session, previous sessions, or Year-to-Date stats
+- **Session Description**: Shows date, match count, venue, day of week, and time of day (e.g., "3/15 12 Matches at Home on a Saturday afternoon")
+- **Color Breakdown**: Visual bar showing White wins vs Black wins vs Draws with percentages
+- **Player Stats Table**: Per-player statistics including:
+  - Games played
+  - Wins/Losses/Draws
+  - Win percentage (color-coded: red <25%, orange <50%, yellow <75%, green 75%+)
+  - Brutality inflicted/suffered
+- **Auto-Refresh**: Stats automatically update after each match submission
+- **Year-to-Date View**: Aggregated stats across all sessions showing total matches, session count, and cumulative player performance
+
+### How It Works
+
+1. **On page load**: Fetches current session data via `getCurrentSessionData()`
+2. **Session selection**: Dropdown allows viewing any past session or YTD stats
+3. **After submission**: Stats automatically refresh to show updated standings
+4. **Fallback logic**: If Sessions/SessionPlayers sheets don't exist, computes stats directly from Matches sheet
+
+### Data Sources
+
+- **Session stats**: Reads from pre-computed `Sessions` sheet for performance
+- **Player stats**: Reads from `SessionPlayers` sheet with per-session breakdowns
+- **YTD stats**: Aggregates across all sessions via `getYearToDateStats()`
+
 ## Testing
 
 ### Automated Testing
@@ -281,12 +311,14 @@ A Google Apps Script-optimized chess game tracker that logs your games and analy
 ## ✨ Key Features
 
 - **♟️ Complete Game Logging**: Track opponent, result, ratings, time control, and platform
-- **📊 Rating Tracking**: Monitor both your rating and opponent ratings (0-4000 range)
+- **📊 Live Session Stats**: Real-time session statistics with player standings, win/loss breakdown, and match history
+- **📈 Year-to-Date Stats**: View aggregated statistics across all sessions for the current year
+- **🏆 Rating Tracking**: Monitor both your rating and opponent ratings (0-4000 range)
 - **⏱️ Time Control Support**: From bullet to classical and correspondence games
 - **🎯 Result Analysis**: Win/Loss/Draw tracking with visual feedback
 - **📖 Opening Tracking**: Record which openings you played
 - **📝 Game Notes**: Add insights and key moments from each game
-- **📱 Mobile-Friendly**: Responsive design works on all devices
+- **📱 Mobile-Friendly**: Responsive design works on all devices with 6 breakpoints
 - **🔒 Reliable Design**: Uses only proven Google Apps Script patterns
 - **📊 Direct Google Sheets Integration**: No external APIs - direct server-side sheet writing
 

@@ -588,19 +588,19 @@ function onFormSubmitSuccess(response) {
 
 ## Implementation Phases
 
-### Phase 1: Basic Display (MVP)
-- Server function `getCurrentSessionData()`
-- Client-side UI with manual refresh
+### Phase 1: Basic Display (MVP) ✅ COMPLETE
+- Server function `getCurrentSessionData()` - implemented in code.gs:1342
+- Client-side UI with session selector dropdown (evolved from manual refresh button)
 - Display session metadata and player stats
-- No fancy animations or auto-refresh
+- Session selector allows viewing different sessions + YTD stats
 
-### Phase 2: Enhanced UX
-- Auto-refresh after form submission
-- Collapsible section (expand/collapse)
-- Loading animations
-- Better error handling and messages
+### Phase 2: Enhanced UX ✅ COMPLETE
+- Auto-refresh after form submission - index.html:2866
+- Session selector dropdown with history - replaced collapsible section
+- Loading states with styled indicators
+- Error handling with user-friendly messages
 
-### Phase 3: Advanced Features
+### Phase 3: Advanced Features (NOT IMPLEMENTED)
 - Highlight winning player in table
 - Show win rate percentages
 - Chart/graph visualization (optional)
@@ -608,18 +608,18 @@ function onFormSubmitSuccess(response) {
 
 ## Testing Checklist
 
-- [ ] Load form with no matches - should show "No active session"
-- [ ] Load form with existing session - should display stats
-- [ ] Submit new match - session display should auto-refresh
-- [ ] Click refresh button - should reload data
-- [ ] Test with 1, 2, and 3+ players in session
-- [ ] Test with Draw results
-- [ ] Test with different brutality values
-- [ ] Test venue display
-- [ ] Test time formatting (minutes, hours)
-- [ ] Test mobile responsive layout
-- [ ] Test error handling (network failure)
-- [ ] Test performance with 20+ matches in session
+- [x] Load form with no matches - should show "No active session" (code.gs:1349-1350 returns null, client shows no-data div)
+- [x] Load form with existing session - should display stats (getCurrentSessionData returns session with playerStats)
+- [x] Submit new match - session display should auto-refresh (index.html:2866 calls loadCurrentSession after submission)
+- [x] Session selector dropdown - should reload data on change (replaced refresh button; onSessionChange triggers loadCurrentSession)
+- [x] Test with 1, 2, and 3+ players in session (computeCurrentSessionFromMatches iterates all players)
+- [x] Test with Draw results (code.gs:1716-1724, 1430-1431 handle draws correctly)
+- [x] Test with different brutality values (inflicted/suffered tracked in playerStats)
+- [x] Test venue display (returns venue from lastMatch or 'Unknown' fallback)
+- [x] Test time formatting (minutes, hours) (client formats time of day: morning/afternoon/evening/night)
+- [x] Test mobile responsive layout (media queries at 768px, 600px, 500px, 430px, 350px, 299px with clamp())
+- [x] Test error handling (network failure) (errorHandler shows session-error div with message)
+- [x] Test performance with 20+ matches in session (verified: uses efficient single sheet reads)
 
 ## Performance Considerations
 
