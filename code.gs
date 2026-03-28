@@ -565,12 +565,17 @@ function adminGetSessionDetails(sessionId) {
       var sessionsHeaders = sessionsData[0];
       var sidCol = sessionsHeaders.indexOf('Session ID');
 
-      // Log available session IDs for debugging
+      // Log available session IDs for debugging (show last 5, which are most recent)
       var availableIds = [];
-      for (var d = 1; d < Math.min(sessionsData.length, 6); d++) {
-        availableIds.push(String(sessionsData[d][sidCol]).trim());
+      var totalRows = sessionsData.length;
+      for (var d = Math.max(1, totalRows - 5); d < totalRows; d++) {
+        availableIds.push({ row: d, id: String(sessionsData[d][sidCol]).trim() });
       }
-      logEvent('admin_session_ids_in_sheet', { first5: availableIds, looking_for: sessionIdStr });
+      logEvent('admin_session_ids_in_sheet', {
+        totalRows: totalRows,
+        last5: availableIds,
+        looking_for: sessionIdStr
+      });
 
       for (var i = 1; i < sessionsData.length; i++) {
         if (String(sessionsData[i][sidCol]).trim() === sessionIdStr) {
