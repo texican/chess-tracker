@@ -440,6 +440,362 @@ function adminSetStableVersion(version) {
   return { success: true, message: 'Stable version set to ' + versionStr };
 }
 
+// ===== ADMIN SESSION MANAGEMENT =====
+
+/**
+ * Admin API: Get all sessions with pagination
+ * Owner-only access
+ * @param {number} page - Page number (1-indexed)
+ * @param {number} pageSize - Items per page (default 20)
+ * @returns {Object} Sessions data with pagination info
+ */
+function adminGetSessions(page, pageSize) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  page = parseInt(page, 10) || 1;
+  pageSize = parseInt(pageSize, 10) || 20;
+  if (page < 1) page = 1;
+  if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
+  try {
+    var spreadsheet = getOrCreateSpreadsheet();
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+
+    if (!sessionsSheet || sessionsSheet.getLastRow() <= 1) {
+      return { sessions: [], total: 0, page: 1, pageSize: pageSize, totalPages: 0 };
+    }
+
+    var data = sessionsSheet.getDataRange().getValues();
+    var headers = data[0];
+    var sessions = [];
+
+    // Column indices
+    var colSessionId = headers.indexOf('Session ID');
+    var colVenue = headers.indexOf('Venue');
+    var colStartTime = headers.indexOf('Start Time');
+    var colEndTime = headers.indexOf('End Time');
+    var colMatches = headers.indexOf('Matches');
+    var colWhiteWins = headers.indexOf('White Wins');
+    var colBlackWins = headers.indexOf('Black Wins');
+    var colDraws = headers.indexOf('Draws');
+    var colAvgBrutality = headers.indexOf('Avg Brutality');
+
+    // Process rows in reverse order (newest first)
+    for (var i = data.length - 1; i >= 1; i--) {
+      var row = data[i];
+      var startTime = row[colStartTime];
+      var endTime = row[colEndTime];
+
+      sessions.push({
+        sessionId: row[colSessionId] || '',
+        venue: row[colVenue] || '',
+        startTime: startTime ? new Date(startTime).toISOString() : null,
+        endTime: endTime ? new Date(endTime).toISOString() : null,
+        matches: parseInt(row[colMatches], 10) || 0,
+        whiteWins: parseInt(row[colWhiteWins], 10) || 0,
+        blackWins: parseInt(row[colBlackWins], 10) || 0,
+        draws: parseInt(row[colDraws], 10) || 0,
+        avgBrutality: parseFloat(row[colAvgBrutality]) || 0
+      });
+    }
+
+    // Paginate
+    var total = sessions.length;
+    var totalPages = Math.ceil(total / pageSize);
+    var start = (page - 1) * pageSize;
+    var end = Math.min(start + pageSize, total);
+    var paginatedSessions = sessions.slice(start, end);
+
+    return {
+      sessions: paginatedSessions,
+      total: total,
+      page: page,
+      pageSize: pageSize,
+      totalPages: totalPages
+    };
+
+  } catch (error) {
+    logEvent('admin_get_sessions_error', { error: error.toString() });
+    throw error;
+  }
+}
+
+/**
+ * Admin API: Get detailed session data including matches and player stats
+ * Owner-only access
+ * @param {string} sessionId - Session ID to retrieve
+ * @returns {Object} Detailed session data with matches and player stats
+ */
+function adminGetSessionDetails(sessionId) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  if (!sessionId) {
+    throw new Error('Session ID is required');
+  }
+
+  try {
+    var spreadsheet = getOrCreateSpreadsheet();
+    var matchesSheet = spreadsheet.getSheetByName('Matches');
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+    var sessionPlayersSheet = spreadsheet.getSheetByName('SessionPlayers');
+
+    // Get session metadata
+    var sessionMeta = null;
+    if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
+      var sessionsData = sessionsSheet.getDataRange().getValues();
+      var sessionsHeaders = sessionsData[0];
+      var sidCol = sessionsHeaders.indexOf('Session ID');
+
+      for (var i = 1; i < sessionsData.length; i++) {
+        if (sessionsData[i][sidCol] === sessionId) {
+          sessionMeta = {
+            venue: sessionsData[i][sessionsHeaders.indexOf('Venue')] || '',
+            startTime: sessionsData[i][sessionsHeaders.indexOf('Start Time')],
+            endTime: sessionsData[i][sessionsHeaders.indexOf('End Time')],
+            matchCount: parseInt(sessionsData[i][sessionsHeaders.indexOf('Matches')], 10) || 0,
+            whiteWins: parseInt(sessionsData[i][sessionsHeaders.indexOf('White Wins')], 10) || 0,
+            blackWins: parseInt(sessionsData[i][sessionsHeaders.indexOf('Black Wins')], 10) || 0,
+            draws: parseInt(sessionsData[i][sessionsHeaders.indexOf('Draws')], 10) || 0,
+            avgBrutality: parseFloat(sessionsData[i][sessionsHeaders.indexOf('Avg Brutality')]) || 0
+          };
+          break;
+        }
+      }
+    }
+
+    // Get matches for this session
+    var matches = [];
+    if (matchesSheet && matchesSheet.getLastRow() > 1) {
+      var matchData = matchesSheet.getDataRange().getValues();
+      var matchHeaders = matchData[0];
+      var matchSessionIdCol = matchHeaders.indexOf('Session ID');
+
+      for (var j = 1; j < matchData.length; j++) {
+        if (matchData[j][matchSessionIdCol] === sessionId) {
+          var timestamp = matchData[j][matchHeaders.indexOf('Timestamp')];
+          matches.push({
+            rowIndex: j + 1, // 1-indexed row number for potential editing
+            timestamp: timestamp ? new Date(timestamp).toISOString() : null,
+            whitePlayer: matchData[j][matchHeaders.indexOf('White Player')] || '',
+            blackPlayer: matchData[j][matchHeaders.indexOf('Black Player')] || '',
+            winner: matchData[j][matchHeaders.indexOf('Winner')] || '',
+            gameEnding: matchData[j][matchHeaders.indexOf('Game Ending')] || '',
+            timeLimit: matchData[j][matchHeaders.indexOf('Time Limit')] || '',
+            brutality: parseInt(matchData[j][matchHeaders.indexOf('Brutality')], 10) || 0,
+            notes: matchData[j][matchHeaders.indexOf('Notes')] || '',
+            pictureUrl: matchData[j][matchHeaders.indexOf('Picture URL')] || ''
+          });
+        }
+      }
+    }
+
+    // Get player stats for this session
+    var playerStats = [];
+    if (sessionPlayersSheet && sessionPlayersSheet.getLastRow() > 1) {
+      var playerData = sessionPlayersSheet.getDataRange().getValues();
+      var playerHeaders = playerData[0];
+      var playerSessionIdCol = playerHeaders.indexOf('Session ID');
+
+      for (var k = 1; k < playerData.length; k++) {
+        if (playerData[k][playerSessionIdCol] === sessionId) {
+          playerStats.push({
+            player: playerData[k][playerHeaders.indexOf('Player')] || '',
+            matches: parseInt(playerData[k][playerHeaders.indexOf('Matches')], 10) || 0,
+            wins: parseInt(playerData[k][playerHeaders.indexOf('Wins')], 10) || 0,
+            winsAsWhite: parseInt(playerData[k][playerHeaders.indexOf('Wins as White')], 10) || 0,
+            winsAsBlack: parseInt(playerData[k][playerHeaders.indexOf('Wins as Black')], 10) || 0,
+            losses: parseInt(playerData[k][playerHeaders.indexOf('Losses')], 10) || 0,
+            lossesAsWhite: parseInt(playerData[k][playerHeaders.indexOf('Losses as White')], 10) || 0,
+            lossesAsBlack: parseInt(playerData[k][playerHeaders.indexOf('Losses as Black')], 10) || 0,
+            draws: parseInt(playerData[k][playerHeaders.indexOf('Draws')], 10) || 0,
+            inflicted: parseInt(playerData[k][playerHeaders.indexOf('Inflicted')], 10) || 0,
+            suffered: parseInt(playerData[k][playerHeaders.indexOf('Suffered')], 10) || 0
+          });
+        }
+      }
+    }
+
+    return {
+      sessionId: sessionId,
+      meta: sessionMeta,
+      matches: matches,
+      playerStats: playerStats
+    };
+
+  } catch (error) {
+    logEvent('admin_get_session_details_error', { sessionId: sessionId, error: error.toString() });
+    throw error;
+  }
+}
+
+/**
+ * Admin API: Recompute session statistics
+ * Owner-only access
+ * @param {string} sessionId - Session ID to recompute, or 'all' for all sessions
+ * @returns {Object} Success response with count of recomputed sessions
+ */
+function adminRecomputeSession(sessionId) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  try {
+    if (sessionId === 'all') {
+      // Recompute all sessions
+      var spreadsheet = getOrCreateSpreadsheet();
+      var matchesSheet = spreadsheet.getSheetByName('Matches');
+
+      if (!matchesSheet || matchesSheet.getLastRow() <= 1) {
+        return { success: true, message: 'No matches to recompute', count: 0 };
+      }
+
+      var data = matchesSheet.getDataRange().getValues();
+      var headers = data[0];
+      var sessionIdCol = headers.indexOf('Session ID');
+
+      // Get unique session IDs
+      var uniqueSessions = {};
+      for (var i = 1; i < data.length; i++) {
+        var sid = data[i][sessionIdCol];
+        if (sid) uniqueSessions[sid] = true;
+      }
+
+      // Recompute each session
+      var count = 0;
+      var errors = [];
+      for (var sid in uniqueSessions) {
+        try {
+          recomputeSessionStats(sid);
+          count++;
+        } catch (e) {
+          errors.push({ sessionId: sid, error: e.toString() });
+          logEvent('admin_recompute_session_error', { sessionId: sid, error: e.toString() });
+        }
+      }
+
+      logEvent('admin_recomputed_all_sessions', {
+        count: count,
+        errors: errors.length,
+        user: Session.getEffectiveUser().getEmail()
+      });
+
+      var message = 'Recomputed ' + count + ' sessions';
+      if (errors.length > 0) {
+        message += ' (' + errors.length + ' errors)';
+      }
+      return { success: true, message: message, count: count, errors: errors };
+
+    } else {
+      // Recompute single session
+      if (!sessionId) {
+        throw new Error('Session ID is required');
+      }
+
+      recomputeSessionStats(sessionId);
+
+      logEvent('admin_recomputed_session', {
+        sessionId: sessionId,
+        user: Session.getEffectiveUser().getEmail()
+      });
+
+      return { success: true, message: 'Session recomputed successfully', sessionId: sessionId };
+    }
+
+  } catch (error) {
+    logEvent('admin_recompute_error', { sessionId: sessionId, error: error.toString() });
+    throw error;
+  }
+}
+
+/**
+ * Admin API: Delete a session and optionally its matches
+ * Owner-only access
+ * @param {string} sessionId - Session ID to delete
+ * @param {boolean} deleteMatches - If true, also delete all matches in the session
+ * @returns {Object} Success response
+ */
+function adminDeleteSession(sessionId, deleteMatches) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  if (!sessionId) {
+    throw new Error('Session ID is required');
+  }
+
+  try {
+    var spreadsheet = getOrCreateSpreadsheet();
+    var deletedMatches = 0;
+
+    // Delete matches if requested
+    if (deleteMatches) {
+      var matchesSheet = spreadsheet.getSheetByName('Matches');
+      if (matchesSheet && matchesSheet.getLastRow() > 1) {
+        var matchData = matchesSheet.getDataRange().getValues();
+        var matchHeaders = matchData[0];
+        var sessionIdCol = matchHeaders.indexOf('Session ID');
+
+        // Delete from bottom to top to avoid index shifting
+        for (var i = matchData.length - 1; i >= 1; i--) {
+          if (matchData[i][sessionIdCol] === sessionId) {
+            matchesSheet.deleteRow(i + 1);
+            deletedMatches++;
+          }
+        }
+      }
+    }
+
+    // Remove session from Sessions sheet
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+    if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
+      var sessionsData = sessionsSheet.getDataRange().getValues();
+      var sessionHeaders = sessionsData[0];
+      var sidCol = sessionHeaders.indexOf('Session ID');
+
+      for (var j = sessionsData.length - 1; j >= 1; j--) {
+        if (sessionsData[j][sidCol] === sessionId) {
+          sessionsSheet.deleteRow(j + 1);
+          break;
+        }
+      }
+    }
+
+    // Remove player stats from SessionPlayers sheet
+    var sessionPlayersSheet = spreadsheet.getSheetByName('SessionPlayers');
+    if (sessionPlayersSheet && sessionPlayersSheet.getLastRow() > 1) {
+      var playerData = sessionPlayersSheet.getDataRange().getValues();
+      var playerHeaders = playerData[0];
+      var playerSidCol = playerHeaders.indexOf('Session ID');
+
+      for (var k = playerData.length - 1; k >= 1; k--) {
+        if (playerData[k][playerSidCol] === sessionId) {
+          sessionPlayersSheet.deleteRow(k + 1);
+        }
+      }
+    }
+
+    logEvent('admin_delete_session', {
+      sessionId: sessionId,
+      deletedMatches: deletedMatches,
+      user: Session.getEffectiveUser().getEmail()
+    });
+
+    var message = 'Session deleted successfully';
+    if (deleteMatches) {
+      message += ' (' + deletedMatches + ' matches removed)';
+    }
+    return { success: true, message: message, deletedMatches: deletedMatches };
+
+  } catch (error) {
+    logEvent('admin_delete_session_error', { sessionId: sessionId, error: error.toString() });
+    throw error;
+  }
+}
+
 // ===== BACKUP MANAGEMENT =====
 
 /**

@@ -417,6 +417,421 @@
       to { transform: rotate(360deg); }
     }
 
+    /* Sessions Tab Styles */
+    .sessions-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 15px;
+      margin-bottom: 25px;
+    }
+
+    .sessions-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sessions-table-wrapper {
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+
+    .sessions-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 700px;
+    }
+
+    .sessions-table th,
+    .sessions-table td {
+      padding: 12px 15px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+
+    .sessions-table th {
+      background: #111;
+      color: #888;
+      font-weight: 600;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+    }
+
+    .sessions-table tbody tr {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .sessions-table tbody tr:hover {
+      background: #222;
+    }
+
+    .sessions-table td {
+      color: #e0e0e0;
+      font-size: 0.9rem;
+    }
+
+    .session-id-cell {
+      font-family: monospace;
+      font-size: 0.8rem;
+      color: #888;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .session-venue-cell {
+      font-weight: 500;
+    }
+
+    .session-date-cell {
+      white-space: nowrap;
+    }
+
+    .session-matches-cell {
+      font-weight: 600;
+      color: #7c3aed;
+    }
+
+    .session-color-bar {
+      display: flex;
+      border-radius: 4px;
+      overflow: hidden;
+      height: 20px;
+      min-width: 100px;
+    }
+
+    .session-color-bar-white {
+      background: #f0f0f0;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .session-color-bar-black {
+      background: #333;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .session-color-bar-draws {
+      background: #666;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin-top: 25px;
+    }
+
+    .pagination-info {
+      color: #888;
+      font-size: 0.9rem;
+    }
+
+    .pagination-buttons {
+      display: flex;
+      gap: 5px;
+    }
+
+    .pagination-btn {
+      padding: 8px 12px;
+      background: #222;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .pagination-btn:hover:not(:disabled) {
+      background: #333;
+      border-color: #7c3aed;
+    }
+
+    .pagination-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .pagination-btn.active {
+      background: #7c3aed;
+      border-color: #7c3aed;
+      color: white;
+    }
+
+    /* Session Details Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 20px;
+      display: none;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: #1a1a1a;
+      border-radius: 12px;
+      max-width: 900px;
+      width: 100%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    .modal-header {
+      padding: 20px 25px;
+      border-bottom: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      background: #1a1a1a;
+      z-index: 10;
+    }
+
+    .modal-header h3 {
+      color: #7c3aed;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 5px 10px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: #fff;
+    }
+
+    .modal-body {
+      padding: 25px;
+    }
+
+    .modal-section {
+      margin-bottom: 30px;
+    }
+
+    .modal-section:last-child {
+      margin-bottom: 0;
+    }
+
+    .modal-section-title {
+      font-size: 1rem;
+      color: #888;
+      margin-bottom: 15px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Session Stats Grid */
+    .session-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .session-stat-card {
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      text-align: center;
+    }
+
+    .session-stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #7c3aed;
+      margin-bottom: 5px;
+    }
+
+    .session-stat-label {
+      font-size: 0.8rem;
+      color: #888;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Player Stats Table */
+    .player-stats-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .player-stats-table th,
+    .player-stats-table td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #333;
+    }
+
+    .player-stats-table th {
+      background: #111;
+      color: #888;
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+    }
+
+    .player-stats-table td {
+      font-size: 0.9rem;
+    }
+
+    .player-stats-table tr:hover {
+      background: #222;
+    }
+
+    .win-pct-cell {
+      font-weight: 600;
+    }
+
+    .win-pct-good { color: #10b981; }
+    .win-pct-ok { color: #fbbf24; }
+    .win-pct-bad { color: #ef4444; }
+
+    /* Matches List in Modal */
+    .matches-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .match-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 15px;
+      padding: 12px;
+      border-bottom: 1px solid #222;
+      align-items: center;
+    }
+
+    .match-item:last-child {
+      border-bottom: none;
+    }
+
+    .match-time {
+      font-size: 0.8rem;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    .match-players {
+      font-size: 0.9rem;
+    }
+
+    .match-players-white {
+      color: #f0f0f0;
+    }
+
+    .match-players-vs {
+      color: #666;
+      margin: 0 8px;
+    }
+
+    .match-players-black {
+      color: #aaa;
+    }
+
+    .match-result {
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .match-result-white {
+      background: rgba(240, 240, 240, 0.15);
+      color: #f0f0f0;
+    }
+
+    .match-result-black {
+      background: rgba(100, 100, 100, 0.3);
+      color: #ccc;
+    }
+
+    .match-result-draw {
+      background: rgba(251, 191, 36, 0.15);
+      color: #fbbf24;
+    }
+
+    /* Modal Footer */
+    .modal-footer {
+      padding: 20px 25px;
+      border-top: 1px solid #333;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .modal-footer-left,
+    .modal-footer-right {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #666;
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 15px;
+      opacity: 0.4;
+    }
+
+    .empty-state h3 {
+      color: #888;
+      margin-bottom: 8px;
+    }
+
     /* Coming Soon */
     .coming-soon {
       text-align: center;
@@ -495,7 +910,7 @@
   <!-- Navigation Tabs -->
   <div class="admin-nav">
     <button class="active" onclick="showSection('config')">⚙️ Configuration</button>
-    <button disabled onclick="showSection('sessions')">📊 Sessions</button>
+    <button onclick="showSection('sessions')">📊 Sessions</button>
     <button disabled onclick="showSection('data')">💾 Data</button>
     <button disabled onclick="showSection('analytics')">📈 Analytics</button>
     <button disabled onclick="showSection('audit')">📋 Audit Log</button>
@@ -560,10 +975,133 @@
     <!-- Sessions Section -->
     <div id="section-sessions" class="admin-section">
       <h2>📊 Sessions</h2>
-      <div class="coming-soon">
-        <div class="coming-soon-icon">📊</div>
-        <h3>Coming Soon</h3>
-        <p>Session management will be available in the next release.</p>
+
+      <div id="sessions-alert" class="alert"></div>
+
+      <!-- Sessions Header with Actions -->
+      <div class="sessions-header">
+        <div class="sessions-summary">
+          <span id="sessions-count">Loading sessions...</span>
+        </div>
+        <div class="sessions-actions">
+          <button class="btn btn-secondary btn-small" onclick="loadSessions()">
+            🔄 Refresh
+          </button>
+          <button class="btn btn-primary btn-small" onclick="recomputeAllSessions()">
+            ♻️ Recompute All
+          </button>
+        </div>
+      </div>
+
+      <!-- Sessions Table -->
+      <div id="sessions-loading" style="text-align: center; padding: 40px; color: #888;">
+        <div class="loading"></div>
+        <p style="margin-top: 15px;">Loading sessions...</p>
+      </div>
+
+      <div id="sessions-empty" class="empty-state" style="display: none;">
+        <div class="empty-state-icon">📊</div>
+        <h3>No Sessions Found</h3>
+        <p>Sessions will appear here after matches are logged.</p>
+      </div>
+
+      <div id="sessions-table-container" style="display: none;">
+        <div class="sessions-table-wrapper">
+          <table class="sessions-table">
+            <thead>
+              <tr>
+                <th>Venue</th>
+                <th>Date</th>
+                <th>Time</th>
+                <th>Matches</th>
+                <th>Results</th>
+                <th>Avg Brutality</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-table-body">
+              <!-- Populated dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" id="sessions-pagination">
+          <button class="pagination-btn" id="prev-page-btn" onclick="prevPage()">← Prev</button>
+          <span class="pagination-info" id="pagination-info">Page 1 of 1</span>
+          <button class="pagination-btn" id="next-page-btn" onclick="nextPage()">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Session Details Modal -->
+    <div id="session-modal" class="modal-overlay" onclick="closeModalOnOverlay(event)">
+      <div class="modal-content" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>📊 <span id="modal-title">Session Details</span></h3>
+          <button class="modal-close" onclick="closeSessionModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <!-- Session Meta -->
+          <div class="modal-section">
+            <div class="session-stats-grid" id="session-stats-grid">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Color Breakdown -->
+          <div class="modal-section">
+            <div class="modal-section-title">Result Distribution</div>
+            <div class="session-color-bar" id="modal-color-bar" style="height: 30px; font-size: 0.85rem;">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+
+          <!-- Player Stats -->
+          <div class="modal-section">
+            <div class="modal-section-title">Player Statistics</div>
+            <div style="overflow-x: auto;">
+              <table class="player-stats-table">
+                <thead>
+                  <tr>
+                    <th>Player</th>
+                    <th>Games</th>
+                    <th>W</th>
+                    <th>L</th>
+                    <th>D</th>
+                    <th>Win %</th>
+                    <th>Inflicted</th>
+                    <th>Suffered</th>
+                  </tr>
+                </thead>
+                <tbody id="modal-player-stats">
+                  <!-- Populated dynamically -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Match List -->
+          <div class="modal-section">
+            <div class="modal-section-title">Matches</div>
+            <div class="matches-list" id="modal-matches-list">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="modal-footer-left">
+            <button class="btn btn-secondary btn-small" id="modal-recompute-btn" onclick="recomputeCurrentSession()">
+              ♻️ Recompute Stats
+            </button>
+          </div>
+          <div class="modal-footer-right">
+            <button class="btn btn-danger btn-small" id="modal-delete-btn" onclick="deleteCurrentSession()">
+              🗑️ Delete Session
+            </button>
+            <button class="btn btn-secondary" onclick="closeSessionModal()">Close</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -628,6 +1166,11 @@
       var activeSection = document.getElementById('section-' + section);
       if (activeSection) {
         activeSection.classList.add('active');
+      }
+
+      // Load data for specific sections
+      if (section === 'sessions') {
+        loadSessions();
       }
     }
 
@@ -993,6 +1536,342 @@
       var div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // ===== SESSION MANAGEMENT =====
+
+    var sessionsState = {
+      sessions: [],
+      currentPage: 1,
+      totalPages: 1,
+      pageSize: 15,
+      total: 0,
+      currentSessionId: null
+    };
+
+    function loadSessions() {
+      document.getElementById('sessions-loading').style.display = 'block';
+      document.getElementById('sessions-empty').style.display = 'none';
+      document.getElementById('sessions-table-container').style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          document.getElementById('sessions-loading').style.display = 'none';
+
+          sessionsState.sessions = result.sessions;
+          sessionsState.total = result.total;
+          sessionsState.currentPage = result.page;
+          sessionsState.totalPages = result.totalPages;
+
+          if (result.total === 0) {
+            document.getElementById('sessions-empty').style.display = 'block';
+            document.getElementById('sessions-count').textContent = 'No sessions found';
+          } else {
+            document.getElementById('sessions-table-container').style.display = 'block';
+            document.getElementById('sessions-count').textContent = result.total + ' session' + (result.total === 1 ? '' : 's');
+            renderSessionsTable(result.sessions);
+            updatePagination();
+          }
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('sessions-loading').style.display = 'none';
+          showSessionsAlert('Error loading sessions: ' + error.message, 'error');
+        })
+        .adminGetSessions(sessionsState.currentPage, sessionsState.pageSize);
+    }
+
+    function renderSessionsTable(sessions) {
+      var tbody = document.getElementById('sessions-table-body');
+      tbody.innerHTML = '';
+
+      for (var i = 0; i < sessions.length; i++) {
+        var session = sessions[i];
+        var row = document.createElement('tr');
+        row.onclick = (function(sid) {
+          return function() { openSessionDetails(sid); };
+        })(session.sessionId);
+
+        // Format date and time
+        var startDate = session.startTime ? new Date(session.startTime) : null;
+        var dateStr = startDate ? formatDate(startDate) : 'Unknown';
+        var timeStr = startDate ? formatTime(startDate) : '';
+
+        // Calculate percentages for color bar
+        var total = session.whiteWins + session.blackWins + session.draws;
+        var whitePct = total > 0 ? Math.round((session.whiteWins / total) * 100) : 0;
+        var blackPct = total > 0 ? Math.round((session.blackWins / total) * 100) : 0;
+        var drawPct = total > 0 ? 100 - whitePct - blackPct : 0;
+
+        row.innerHTML =
+          '<td class="session-venue-cell">' + escapeHtml(session.venue || 'Unknown') + '</td>' +
+          '<td class="session-date-cell">' + dateStr + '</td>' +
+          '<td class="session-date-cell">' + timeStr + '</td>' +
+          '<td class="session-matches-cell">' + session.matches + '</td>' +
+          '<td>' + renderColorBar(session.whiteWins, session.blackWins, session.draws, whitePct, blackPct, drawPct) + '</td>' +
+          '<td>' + (session.avgBrutality ? session.avgBrutality.toFixed(1) : '-') + '</td>' +
+          '<td><button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); openSessionDetails(\'' + session.sessionId + '\')">View</button></td>';
+
+        tbody.appendChild(row);
+      }
+    }
+
+    function renderColorBar(white, black, draws, whitePct, blackPct, drawPct) {
+      if (white + black + draws === 0) return '-';
+
+      var html = '<div class="session-color-bar">';
+      if (whitePct > 0) {
+        html += '<div class="session-color-bar-white" style="width: ' + whitePct + '%">' + white + '</div>';
+      }
+      if (blackPct > 0) {
+        html += '<div class="session-color-bar-black" style="width: ' + blackPct + '%">' + black + '</div>';
+      }
+      if (drawPct > 0) {
+        html += '<div class="session-color-bar-draws" style="width: ' + drawPct + '%">' + draws + '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function updatePagination() {
+      document.getElementById('pagination-info').textContent =
+        'Page ' + sessionsState.currentPage + ' of ' + sessionsState.totalPages;
+
+      document.getElementById('prev-page-btn').disabled = sessionsState.currentPage <= 1;
+      document.getElementById('next-page-btn').disabled = sessionsState.currentPage >= sessionsState.totalPages;
+    }
+
+    function prevPage() {
+      if (sessionsState.currentPage > 1) {
+        sessionsState.currentPage--;
+        loadSessions();
+      }
+    }
+
+    function nextPage() {
+      if (sessionsState.currentPage < sessionsState.totalPages) {
+        sessionsState.currentPage++;
+        loadSessions();
+      }
+    }
+
+    function openSessionDetails(sessionId) {
+      sessionsState.currentSessionId = sessionId;
+      document.getElementById('session-modal').classList.add('show');
+      document.getElementById('modal-title').textContent = 'Loading...';
+
+      // Clear previous content
+      document.getElementById('session-stats-grid').innerHTML = '<div style="text-align: center; padding: 20px;"><div class="loading"></div></div>';
+      document.getElementById('modal-color-bar').innerHTML = '';
+      document.getElementById('modal-player-stats').innerHTML = '';
+      document.getElementById('modal-matches-list').innerHTML = '';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          renderSessionDetails(result);
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('modal-title').textContent = 'Error';
+          document.getElementById('session-stats-grid').innerHTML =
+            '<div style="text-align: center; color: #ef4444; padding: 20px;">Failed to load session details: ' + error.message + '</div>';
+        })
+        .adminGetSessionDetails(sessionId);
+    }
+
+    function renderSessionDetails(data) {
+      var meta = data.meta || {};
+      var venue = meta.venue || 'Unknown';
+      var startDate = meta.startTime ? new Date(meta.startTime) : null;
+
+      // Update title
+      var dateStr = startDate ? formatDate(startDate) : '';
+      document.getElementById('modal-title').textContent = venue + (dateStr ? ' - ' + dateStr : '');
+
+      // Stats grid
+      var statsHtml =
+        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.matchCount || 0) + '</div><div class="session-stat-label">Matches</div></div>' +
+        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.whiteWins || 0) + '</div><div class="session-stat-label">White Wins</div></div>' +
+        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.blackWins || 0) + '</div><div class="session-stat-label">Black Wins</div></div>' +
+        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.draws || 0) + '</div><div class="session-stat-label">Draws</div></div>' +
+        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.avgBrutality ? meta.avgBrutality.toFixed(1) : '-') + '</div><div class="session-stat-label">Avg Brutality</div></div>';
+
+      document.getElementById('session-stats-grid').innerHTML = statsHtml;
+
+      // Color bar
+      var total = (meta.whiteWins || 0) + (meta.blackWins || 0) + (meta.draws || 0);
+      var whitePct = total > 0 ? Math.round((meta.whiteWins / total) * 100) : 0;
+      var blackPct = total > 0 ? Math.round((meta.blackWins / total) * 100) : 0;
+      var drawPct = total > 0 ? 100 - whitePct - blackPct : 0;
+
+      document.getElementById('modal-color-bar').innerHTML = renderColorBar(
+        meta.whiteWins || 0, meta.blackWins || 0, meta.draws || 0,
+        whitePct, blackPct, drawPct
+      ).replace('session-color-bar', 'session-color-bar" style="height: 30px; font-size: 0.85rem;');
+
+      // Player stats
+      var playerStatsHtml = '';
+      if (data.playerStats && data.playerStats.length > 0) {
+        for (var i = 0; i < data.playerStats.length; i++) {
+          var ps = data.playerStats[i];
+          var winPct = ps.matches > 0 ? Math.round((ps.wins / ps.matches) * 100) : 0;
+          var winPctClass = winPct >= 60 ? 'win-pct-good' : (winPct >= 40 ? 'win-pct-ok' : 'win-pct-bad');
+
+          playerStatsHtml +=
+            '<tr>' +
+            '<td>' + escapeHtml(ps.player) + '</td>' +
+            '<td>' + ps.matches + '</td>' +
+            '<td>' + ps.wins + '</td>' +
+            '<td>' + ps.losses + '</td>' +
+            '<td>' + ps.draws + '</td>' +
+            '<td class="win-pct-cell ' + winPctClass + '">' + winPct + '%</td>' +
+            '<td>' + (ps.inflicted || 0) + '</td>' +
+            '<td>' + (ps.suffered || 0) + '</td>' +
+            '</tr>';
+        }
+      } else {
+        playerStatsHtml = '<tr><td colspan="8" style="text-align: center; color: #888;">No player data</td></tr>';
+      }
+      document.getElementById('modal-player-stats').innerHTML = playerStatsHtml;
+
+      // Matches list
+      var matchesHtml = '';
+      if (data.matches && data.matches.length > 0) {
+        for (var j = 0; j < data.matches.length; j++) {
+          var match = data.matches[j];
+          var matchTime = match.timestamp ? formatTime(new Date(match.timestamp)) : '';
+          var resultClass = match.winner === 'White' ? 'match-result-white' :
+                            (match.winner === 'Black' ? 'match-result-black' : 'match-result-draw');
+          var resultText = match.winner === 'Draw' ? 'Draw' : match.winner + ' wins';
+
+          matchesHtml +=
+            '<div class="match-item">' +
+            '<span class="match-time">' + matchTime + '</span>' +
+            '<span class="match-players">' +
+            '<span class="match-players-white">' + escapeHtml(match.whitePlayer) + '</span>' +
+            '<span class="match-players-vs">vs</span>' +
+            '<span class="match-players-black">' + escapeHtml(match.blackPlayer) + '</span>' +
+            '</span>' +
+            '<span class="match-result ' + resultClass + '">' + resultText + '</span>' +
+            '</div>';
+        }
+      } else {
+        matchesHtml = '<div style="text-align: center; color: #888; padding: 20px;">No matches found</div>';
+      }
+      document.getElementById('modal-matches-list').innerHTML = matchesHtml;
+    }
+
+    function closeSessionModal() {
+      document.getElementById('session-modal').classList.remove('show');
+      sessionsState.currentSessionId = null;
+    }
+
+    function closeModalOnOverlay(event) {
+      if (event.target.id === 'session-modal') {
+        closeSessionModal();
+      }
+    }
+
+    function recomputeCurrentSession() {
+      if (!sessionsState.currentSessionId) return;
+
+      var btn = document.getElementById('modal-recompute-btn');
+      btn.disabled = true;
+      btn.textContent = 'Recomputing...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          btn.textContent = '♻️ Recompute Stats';
+          showSessionsAlert(result.message, 'success');
+          openSessionDetails(sessionsState.currentSessionId); // Refresh modal
+          loadSessions(); // Refresh list
+        })
+        .withFailureHandler(function(error) {
+          btn.disabled = false;
+          btn.textContent = '♻️ Recompute Stats';
+          showSessionsAlert('Error: ' + error.message, 'error');
+        })
+        .adminRecomputeSession(sessionsState.currentSessionId);
+    }
+
+    function recomputeAllSessions() {
+      if (!confirm('This will recompute statistics for all sessions. Continue?')) {
+        return;
+      }
+
+      showSessionsAlert('Recomputing all sessions...', 'success');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showSessionsAlert(result.message, 'success');
+          loadSessions();
+        })
+        .withFailureHandler(function(error) {
+          showSessionsAlert('Error: ' + error.message, 'error');
+        })
+        .adminRecomputeSession('all');
+    }
+
+    function deleteCurrentSession() {
+      if (!sessionsState.currentSessionId) return;
+
+      var deleteMatches = confirm(
+        'Do you want to delete the session AND all its matches?\n\n' +
+        'Click OK to delete matches too.\n' +
+        'Click Cancel to only remove session metadata (keep matches).'
+      );
+
+      var confirmed = confirm(
+        'Are you sure you want to delete this session?' +
+        (deleteMatches ? '\n\nThis will PERMANENTLY delete all matches in this session!' : '')
+      );
+
+      if (!confirmed) return;
+
+      var btn = document.getElementById('modal-delete-btn');
+      btn.disabled = true;
+      btn.textContent = 'Deleting...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false;
+          btn.textContent = '🗑️ Delete Session';
+          closeSessionModal();
+          showSessionsAlert(result.message, 'success');
+          loadSessions();
+        })
+        .withFailureHandler(function(error) {
+          btn.disabled = false;
+          btn.textContent = '🗑️ Delete Session';
+          showSessionsAlert('Error: ' + error.message, 'error');
+        })
+        .adminDeleteSession(sessionsState.currentSessionId, deleteMatches);
+    }
+
+    function showSessionsAlert(message, type) {
+      var alert = document.getElementById('sessions-alert');
+      alert.className = 'alert alert-' + type + ' show';
+      alert.textContent = message;
+
+      setTimeout(function() {
+        alert.classList.remove('show');
+      }, 5000);
+    }
+
+    // ===== DATE FORMATTING HELPERS =====
+
+    function formatDate(date) {
+      var months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return months[date.getMonth()] + ' ' + date.getDate() + ', ' + date.getFullYear();
+    }
+
+    function formatTime(date) {
+      var hours = date.getHours();
+      var minutes = date.getMinutes();
+      var ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      var minuteStr = minutes < 10 ? '0' + minutes : minutes;
+      return hours + ':' + minuteStr + ' ' + ampm;
     }
   </script>
 </body>

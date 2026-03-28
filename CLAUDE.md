@@ -610,10 +610,56 @@ All functions check `isScriptOwner()` first, throw error if unauthorized.
 - Owner-only, logged
 - Note: this is display-only; the actual deployment protection uses `.stable-deployment` file
 
+**adminGetSessions(page, pageSize):**
+- Returns paginated list of sessions (newest first)
+- Parameters: page (1-indexed), pageSize (default 20, max 100)
+- Returns: `{ sessions: [...], total, page, pageSize, totalPages }`
+- Each session includes: sessionId, venue, startTime, endTime, matches, whiteWins, blackWins, draws, avgBrutality
+
+**adminGetSessionDetails(sessionId):**
+- Returns detailed session data including matches and player stats
+- Parameters: sessionId (required)
+- Returns: `{ sessionId, meta: {...}, matches: [...], playerStats: [...] }`
+- Matches include: rowIndex, timestamp, whitePlayer, blackPlayer, winner, gameEnding, timeLimit, brutality, notes, pictureUrl
+- Player stats include: player, matches, wins, winsAsWhite, winsAsBlack, losses, lossesAsWhite, lossesAsBlack, draws, inflicted, suffered
+
+**adminRecomputeSession(sessionId):**
+- Recomputes session statistics from source matches
+- Parameters: sessionId or 'all' for all sessions
+- Calls `recomputeSessionStats()` for each session
+- Returns: `{ success: true, message, count?, errors? }`
+
+**adminDeleteSession(sessionId, deleteMatches):**
+- Deletes session from Sessions and SessionPlayers sheets
+- Parameters: sessionId (required), deleteMatches (boolean - if true, also deletes matches from Matches sheet)
+- Returns: `{ success: true, message, deletedMatches }`
+
+### Session Management Tab (Implemented)
+
+The Sessions tab provides a complete interface for managing chess sessions:
+
+**Features:**
+- Paginated session list with 15 sessions per page
+- Session table showing venue, date, time, matches, results bar, avg brutality
+- Color-coded results bar (white/black/draws distribution)
+- Session details modal with full statistics
+
+**Session Details Modal:**
+- Stats grid: Match count, white wins, black wins, draws, avg brutality
+- Color breakdown bar showing result distribution
+- Player statistics table: games, W/L/D, win%, inflicted/suffered brutality
+- Matches list showing all games in chronological order
+
+**Actions:**
+- Refresh: Reload session list
+- Recompute All: Recalculate stats for all sessions from match data
+- View: Open session details modal
+- Recompute Stats (in modal): Recalculate stats for single session
+- Delete Session (in modal): Remove session with option to delete matches
+
 ### Future Enhancements
 
-**Phase 2 - Sessions & Data (Planned):**
-- Sessions tab: View sessions with pagination, recompute stats, view details
+**Phase 2 - Data Management (Planned):**
 - Data tab: Export CSV/JSON, recompute all sessions, backup tools
 
 **Phase 3 - Analytics & Audit (Planned):**
@@ -664,6 +710,16 @@ All functions check `isScriptOwner()` first, throw error if unauthorized.
 - New players appear in dropdowns
 - New venues appear in venue dropdown
 - Session gap affects new session creation
+
+**Session Management:**
+- Sessions tab loads session list on navigation
+- Pagination works correctly (prev/next buttons, page indicator)
+- Session details modal opens and displays correct data
+- Color bar shows accurate white/black/draw distribution
+- Player stats table shows win percentages with color coding
+- Matches list shows all games in session chronologically
+- Recompute Stats button recalculates session statistics
+- Delete Session removes session data (with/without matches)
 
 ## Session & Venue Relationship
 
