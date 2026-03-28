@@ -487,9 +487,21 @@ function adminGetSessions(page, pageSize) {
       var row = data[i];
       var startTime = row[colStartTime];
       var endTime = row[colEndTime];
+      var rawSessionId = row[colSessionId];
+      var sessionIdStr = String(rawSessionId || '').trim();
+
+      // Log first few sessions for debugging
+      if (sessions.length < 3) {
+        logEvent('admin_get_sessions_row', {
+          rowIndex: i,
+          rawSessionId: rawSessionId,
+          sessionIdStr: sessionIdStr,
+          rawType: typeof rawSessionId
+        });
+      }
 
       sessions.push({
-        sessionId: String(row[colSessionId] || '').trim(),
+        sessionId: sessionIdStr,
         venue: row[colVenue] || '',
         startTime: startTime ? new Date(startTime).toISOString() : null,
         endTime: endTime ? new Date(endTime).toISOString() : null,
@@ -546,10 +558,19 @@ function adminGetSessionDetails(sessionId) {
     // Get session metadata
     var sessionMeta = null;
     var sessionIdStr = String(sessionId).trim();
+    logEvent('admin_session_details_lookup', { sessionIdStr: sessionIdStr });
+
     if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
       var sessionsData = sessionsSheet.getDataRange().getValues();
       var sessionsHeaders = sessionsData[0];
       var sidCol = sessionsHeaders.indexOf('Session ID');
+
+      // Log available session IDs for debugging
+      var availableIds = [];
+      for (var d = 1; d < Math.min(sessionsData.length, 6); d++) {
+        availableIds.push(String(sessionsData[d][sidCol]).trim());
+      }
+      logEvent('admin_session_ids_in_sheet', { first5: availableIds, looking_for: sessionIdStr });
 
       for (var i = 1; i < sessionsData.length; i++) {
         if (String(sessionsData[i][sidCol]).trim() === sessionIdStr) {
