@@ -489,7 +489,7 @@ function adminGetSessions(page, pageSize) {
       var endTime = row[colEndTime];
 
       sessions.push({
-        sessionId: row[colSessionId] || '',
+        sessionId: String(row[colSessionId] || '').trim(),
         venue: row[colVenue] || '',
         startTime: startTime ? new Date(startTime).toISOString() : null,
         endTime: endTime ? new Date(endTime).toISOString() : null,
@@ -545,13 +545,14 @@ function adminGetSessionDetails(sessionId) {
 
     // Get session metadata
     var sessionMeta = null;
+    var sessionIdStr = String(sessionId).trim();
     if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
       var sessionsData = sessionsSheet.getDataRange().getValues();
       var sessionsHeaders = sessionsData[0];
       var sidCol = sessionsHeaders.indexOf('Session ID');
 
       for (var i = 1; i < sessionsData.length; i++) {
-        if (sessionsData[i][sidCol] === sessionId) {
+        if (String(sessionsData[i][sidCol]).trim() === sessionIdStr) {
           sessionMeta = {
             venue: sessionsData[i][sessionsHeaders.indexOf('Venue')] || '',
             startTime: sessionsData[i][sessionsHeaders.indexOf('Start Time')],
@@ -575,7 +576,7 @@ function adminGetSessionDetails(sessionId) {
       var matchSessionIdCol = matchHeaders.indexOf('Session ID');
 
       for (var j = 1; j < matchData.length; j++) {
-        if (matchData[j][matchSessionIdCol] === sessionId) {
+        if (String(matchData[j][matchSessionIdCol]).trim() === sessionIdStr) {
           var timestamp = matchData[j][matchHeaders.indexOf('Timestamp')];
           matches.push({
             rowIndex: j + 1, // 1-indexed row number for potential editing
@@ -601,7 +602,7 @@ function adminGetSessionDetails(sessionId) {
       var playerSessionIdCol = playerHeaders.indexOf('Session ID');
 
       for (var k = 1; k < playerData.length; k++) {
-        if (playerData[k][playerSessionIdCol] === sessionId) {
+        if (String(playerData[k][playerSessionIdCol]).trim() === sessionIdStr) {
           playerStats.push({
             player: playerData[k][playerHeaders.indexOf('Player')] || '',
             matches: parseInt(playerData[k][playerHeaders.indexOf('Matches')], 10) || 0,

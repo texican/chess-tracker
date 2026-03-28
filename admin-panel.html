@@ -1586,10 +1586,19 @@
 
       for (var i = 0; i < sessions.length; i++) {
         var session = sessions[i];
+        var sessionId = session.sessionId || '';
+
+        // Skip sessions without valid ID
+        if (!sessionId) {
+          console.warn('Skipping session without ID:', session);
+          continue;
+        }
+
         var row = document.createElement('tr');
+        row.setAttribute('data-session-id', sessionId);
         row.onclick = (function(sid) {
           return function() { openSessionDetails(sid); };
-        })(session.sessionId);
+        })(sessionId);
 
         // Format date and time
         var startDate = session.startTime ? new Date(session.startTime) : null;
@@ -1602,6 +1611,17 @@
         var blackPct = total > 0 ? Math.round((session.blackWins / total) * 100) : 0;
         var drawPct = total > 0 ? 100 - whitePct - blackPct : 0;
 
+        // Create view button with data attribute instead of inline onclick
+        var viewBtn = document.createElement('button');
+        viewBtn.className = 'btn btn-secondary btn-small';
+        viewBtn.textContent = 'View';
+        viewBtn.onclick = (function(sid) {
+          return function(e) {
+            e.stopPropagation();
+            openSessionDetails(sid);
+          };
+        })(sessionId);
+
         row.innerHTML =
           '<td class="session-venue-cell">' + escapeHtml(session.venue || 'Unknown') + '</td>' +
           '<td class="session-date-cell">' + dateStr + '</td>' +
@@ -1609,8 +1629,10 @@
           '<td class="session-matches-cell">' + session.matches + '</td>' +
           '<td>' + renderColorBar(session.whiteWins, session.blackWins, session.draws, whitePct, blackPct, drawPct) + '</td>' +
           '<td>' + (session.avgBrutality ? session.avgBrutality.toFixed(1) : '-') + '</td>' +
-          '<td><button class="btn btn-secondary btn-small" onclick="event.stopPropagation(); openSessionDetails(\'' + session.sessionId + '\')">View</button></td>';
+          '<td></td>';
 
+        // Append the button to the last cell
+        row.lastElementChild.appendChild(viewBtn);
         tbody.appendChild(row);
       }
     }
@@ -1655,6 +1677,14 @@
     }
 
     function openSessionDetails(sessionId) {
+      console.log('Opening session details for:', sessionId);
+
+      if (!sessionId) {
+        console.error('No session ID provided');
+        showSessionsAlert('Cannot open session: No session ID', 'error');
+        return;
+      }
+
       sessionsState.currentSessionId = sessionId;
       document.getElementById('session-modal').classList.add('show');
       document.getElementById('modal-title').textContent = 'Loading...';
@@ -1667,24 +1697,41 @@
 
       google.script.run
         .withSuccessHandler(function(result) {
+          console.log('Session details loaded:', result);
           renderSessionDetails(result);
         })
         .withFailureHandler(function(error) {
+          console.error('Failed to load session details:', error);
           document.getElementById('modal-title').textContent = 'Error';
           document.getElementById('session-stats-grid').innerHTML =
-            '<div style="text-align: center; color: #ef4444; padding: 20px;">Failed to load session details: ' + error.message + '</div>';
+            '<div style="text-align: center; color: #ef4444; padding: 20px;">Failed to load session details: ' + (error.message || error) + '</div>';
         })
         .adminGetSessionDetails(sessionId);
     }
 
     function renderSessionDetails(data) {
       var meta = data.meta || {};
+      var hasMetaData = data.meta !== null && data.meta !== undefined;
+
+      // If no session metadata found, try to derive info from matches
       var venue = meta.venue || 'Unknown';
       var startDate = meta.startTime ? new Date(meta.startTime) : null;
 
+      // Fallback: get venue/time from first match if meta is missing
+      if (!hasMetaData && data.matches && data.matches.length > 0) {
+        var firstMatch = data.matches[0];
+        if (!startDate && firstMatch.timestamp) {
+          startDate = new Date(firstMatch.timestamp);
+        }
+      }
+
       // Update title
       var dateStr = startDate ? formatDate(startDate) : '';
-      document.getElementById('modal-title').textContent = venue + (dateStr ? ' - ' + dateStr : '');
+      var titleText = venue + (dateStr ? ' - ' + dateStr : '');
+      if (!hasMetaData) {
+        titleText += ' (stats need recompute)';
+      }
+      document.getElementById('modal-title').textContent = titleText;
 
       // Stats grid
       var statsHtml =
