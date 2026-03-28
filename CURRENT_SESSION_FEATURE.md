@@ -1,5 +1,9 @@
 # Current Session Display - Feature Specification
 
+> **Status: ✅ COMPLETE** (2026-03-28)
+>
+> Core functionality implemented. Phase 3 enhancements deferred as optional improvements.
+
 ## Overview
 Display real-time statistics about the ongoing chess session at the top of the match logging form.
 
@@ -600,10 +604,10 @@ function onFormSubmitSuccess(response) {
 - Loading states with styled indicators
 - Error handling with user-friendly messages
 
-### Phase 3: Advanced Features (NOT IMPLEMENTED)
+### Phase 3: Advanced Features (DEFERRED - Optional Enhancements)
 - Highlight winning player in table
 - Show win rate percentages
-- Chart/graph visualization (optional)
+- Chart/graph visualization
 - Export session summary
 
 ## Testing Checklist
@@ -639,9 +643,9 @@ function onFormSubmitSuccess(response) {
 
 ## Future Enhancements
 
+- ~~**Session history**: Show previous sessions in a dropdown~~ ✅ Implemented via session selector
+- **Match-by-match timeline**: Extracted to [MATCH_TIMELINE_FEATURE.md](MATCH_TIMELINE_FEATURE.md)
 - **Real-time sync**: Use a polling mechanism to check for updates from other devices
-- **Session history**: Show previous sessions in a dropdown
-- **Match-by-match timeline**: Show each match in chronological order
 - **Brutality heatmap**: Visual representation of brutality levels
 - **Win streak indicator**: Highlight current win streaks
 - **Session goals**: Set and track session goals (e.g., "First to 5 wins")
