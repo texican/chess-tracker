@@ -1,0 +1,10 @@
+# Chess redirect configuration
+# Copy to .chess-redirect.conf and fill in your values
+# .chess-redirect.conf is gitignored — never committed
+
+WEBSITE_REPO=""           # GitHub repo with redirect action (e.g. owner/repo)
+WORKFLOW_FILE="update-chess-redirect.yml"
+STABLE_DOMAIN=""          # Stable redirect subdomain (e.g. chess.yourwebsite.com)
+BETA_DOMAIN=""            # Beta redirect subdomain (e.g. betachess.yourwebsite.com)
+STABLE_SUBDOMAIN=""       # Subdomain key for GitHub Action (e.g. ct)
+BETA_SUBDOMAIN=""         # Subdomain key for GitHub Action (e.g. bct)

@@ -5,6 +5,138 @@ All notable changes to the Chess Game Tracker project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] - 2026-03-29
+
+### Added - Beta Tag & Version Sync
+- **Beta deployment indicator** — orange "Beta" tag displayed in page title on non-stable deployments (index.html + admin-panel.html)
+- `isBetaDeployment()` in code.gs — compares current deployment URL against `STABLE_DEPLOYMENT_ID` Script Property
+- `adminSetStableDeploymentId()` in code.gs — stores stable deployment ID in Script Properties (called by promote-stable.sh)
+- **deploy.sh auto-syncs VERSION** from CHANGELOG.md → code.gs before pushing; amends the current commit if version changed
+- **promote-stable.sh interactive UX** — lists deployments with stable marker, accepts version numbers (e.g. `./promote-stable.sh 150`), prompts interactively when no argument given, detects "already stable"
+
+### Removed
+- Deleted obsolete `backlog/FUTURE_WORK.md` (all items completed in v2.0.0)
+
+## [2.5.0] - 2026-03-29
+
+### Added - Custom Domain Redirects
+- **`promote-stable.sh`** — promotes a deployment to stable, updates `.stable-deployment`, sets `LAST_STABLE_VERSION` via `clasp run`, and triggers GitHub Action to update `ct.carlosiflores.com` redirect
+- **`.chess-redirect.conf.example`** — template for redirect configuration (checked in)
+- **`.chess-redirect.conf`** — actual redirect config with repo/domain values (gitignored)
+- `deploy.sh` now auto-triggers beta redirect update (`bct.carlosiflores.com`) after each deployment
+- Two subdomains: `ct.carlosiflores.com` (stable) and `bct.carlosiflores.com` (beta) via nginx 302 redirects
+
+### Fixed
+- **deploy.sh cleanup bug** — deployments without timestamps in descriptions (e.g. @31, @33) were invisible to the cleanup regex, surviving forever while legitimate deployments got deleted. Now matches ALL deployment IDs and assigns epoch=0 to non-timestamped ones.
+
+## [2.4.0] - 2026-03-28
+
+### Added - Admin Sessions Tab
+- **Session Management Tab** in admin panel (Phase 2 complete)
+- Paginated session list with 15 sessions per page
+- Session details modal with full statistics
+- Color-coded results bar showing white/black/draw distribution
+- Player statistics table with win percentages
+- Matches list showing all games in chronological order
+- Recompute Stats button for single session recalculation
+- Recompute All button for batch session statistics update
+- Delete Session functionality with optional match deletion
+
+### Changed - API Standardization
+- Standardized all admin session APIs to flat response structure
+- `adminGetSessions()` returns `{ success, sessions, total, page, pageSize, totalPages }`
+- `adminGetSessionDetails()` returns `{ success, sessionId, meta, matches, playerStats }`
+- `adminRecomputeSession()` returns `{ success, message, count?, errors? }`
+- `adminDeleteSession()` returns `{ success, message, deletedMatches }`
+- JSON serialization for Date objects in API responses
+
+### Fixed
+- Session View button failing to load data for some sessions
+- Date object serialization issues in `adminGetSessionDetails()`
+
+---
+
+## [2.3.0] - 2026-03-27
+
+### Added - Live Session Stats Display
+- Real-time session statistics displayed at top of form interface
+- Session selector dropdown (Most Recent Session, Year to Date, past sessions)
+- Color breakdown bar showing white/black/draw distribution with counts
+- Player stats table with W/L/D, win percentages, and brutality stats
+- Auto-refresh after form submission
+- Loading/error/no-data states with user feedback
+
+### Changed
+- Migrated repo from personal-web-forms sub-repo to standalone chess-tracker repo
+- Updated all documentation references to reflect new repo location
+
+### Documentation
+- Documented live session stats feature implementation
+- Extracted match timeline spec to separate feature file
+
+---
+
+## [2.2.0] - 2026-03-21
+
+### Added - Admin Panel Navigation
+- Navigation links between admin panel and main form
+- GAS templated HTML for proper navigation in iframe context
+
+### Fixed
+- Admin/form navigation using `target=_top` for GAS iframe compatibility
+
+---
+
+## [2.1.0] - 2026-03-13
+
+### Added - Deployment & Stability
+- **Stable deployment pinning** via `.stable-deployment` file
+- `adminGetStableVersion()` and `adminSetStableVersion()` admin APIs
+- Git commit hash embedded in deployment descriptions for traceability
+- Clean git working tree requirement before deployment
+- Automatic venue inference for multi-device session logging
+
+### Changed
+- Renamed `lastSubmission` Script Property to `LAST_SUBMISSION` (SCREAMING_SNAKE_CASE convention)
+- Deploy script now requires clean git tree
+- Deploy descriptions now include `git:abc1234` hash suffix
+
+### Fixed
+- Blank venue on multi-device session logging via `inferVenueFromSession()`
+
+### Documentation
+- Documented stable version management workflow
+- Documented session/venue relationship and assignment logic
+- Documented BackupMatches sheet column order (Backup Timestamp is last column)
+
+---
+
+## [2.0.1] - 2026-02-01
+
+### Added - Admin Panel & Testing
+- **Owner-only admin panel** accessible via `?admin=true` URL parameter
+- Admin panel Configuration tab for managing players, venues, session settings
+- Player management: add/remove/reorder players with color pickers
+- Venue management: add/remove venues with mulligan toggles
+- Session gap hours configuration
+- `adminGetConfig()` and `adminSaveConfig()` admin APIs
+- Server-side owner verification via `isScriptOwner()`
+- **Comprehensive automated test suite** (44 tests in test-suite.gs)
+- Test cleanup utilities in test-cleanup.gs
+- Client-side test runner in test-client.html
+- `testAll()` and `quickTest()` functions for test execution
+
+### Changed
+- Session stats now computed and cached in Sessions/SessionPlayers sheets
+- Deploy script improved with better cleanup logic
+
+### Documentation
+- Added complete testing strategy documentation to CLAUDE.md
+- Documented admin panel architecture and API functions
+- Added test patterns and best practices
+
+---
+
 ## [2.0.0] - 2026-01-12
 
 ### Added - Configuration Externalization

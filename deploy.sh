@@ -34,6 +34,32 @@ fi
 GIT_HASH=$(git rev-parse --short HEAD)
 echo "🔗 Git commit: $GIT_HASH"
 
+# ─── Sync VERSION from CHANGELOG.md → code.gs ────────────────────
+CHANGELOG_VERSION=$(grep -m1 -oE '\[[0-9]+\.[0-9]+\.[0-9]+\]' CHANGELOG.md | tr -d '[]')
+if [ -n "$CHANGELOG_VERSION" ]; then
+    CURRENT_VERSION=$(grep -m1 "const VERSION" code.gs | sed "s/.*'\\([^']*\\)'.*/\\1/")
+    if [ "$CHANGELOG_VERSION" != "$CURRENT_VERSION" ]; then
+        echo "📋 Syncing VERSION: $CURRENT_VERSION → $CHANGELOG_VERSION"
+        sed -i '' "s/const VERSION = '.*'/const VERSION = '$CHANGELOG_VERSION'/" code.gs
+        sed -i '' "s/^ \\* Version: .*/ * Version: $CHANGELOG_VERSION/" code.gs
+        TODAY=$(date '+%Y-%m-%d')
+        sed -i '' "s/const LAST_UPDATED = '.*'/const LAST_UPDATED = '$TODAY'/" code.gs
+        sed -i '' "s/^ \\* Last Updated: .*/ * Last Updated: $TODAY/" code.gs
+        # Amend the current commit with the version bump (tree is clean at this point)
+        git add code.gs
+        if ! git commit --amend --no-edit --quiet; then
+            echo "❌ Failed to amend commit with version sync"
+            git checkout HEAD -- code.gs
+            exit 1
+        fi
+        GIT_HASH=$(git rev-parse --short HEAD)
+        echo "🔗 Amended commit: $GIT_HASH"
+    fi
+    VERSION="$CHANGELOG_VERSION"
+else
+    VERSION=$(grep -m1 "const VERSION" code.gs | sed "s/.*'\\([^']*\\)'.*/\\1/" || echo "unknown")
+fi
+
 echo "📤 Pushing files to Google Apps Script..."
 clasp push --force
 
@@ -41,14 +67,25 @@ echo "🧹 Cleaning up old deployments..."
 # Get full deployment list with descriptions
 DEPLOYMENTS_FULL=$(clasp deployments)
 
-# Extract deployment IDs and their timestamps from descriptions
+# Extract ALL deployment IDs (except @HEAD), with timestamps when available
 declare -a DEPLOYMENT_DATA
 while IFS= read -r line; do
-    if [[ $line =~ (AK[a-zA-Z0-9_-]+).*([0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}) ]]; then
+    # Skip @HEAD deployment
+    if [[ $line =~ @HEAD ]]; then
+        continue
+    fi
+    # Match any deployment ID
+    if [[ $line =~ (AK[a-zA-Z0-9_-]+) ]]; then
         dep_id="${BASH_REMATCH[1]}"
-        timestamp="${BASH_REMATCH[2]}"
-        # Convert to Unix epoch for comparison
-        epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$timestamp" "+%s" 2>/dev/null || echo "0")
+        # Try to extract a timestamp from the description
+        if [[ $line =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}[[:space:]][0-9]{2}:[0-9]{2}:[0-9]{2}) ]]; then
+            timestamp="${BASH_REMATCH[1]}"
+            epoch=$(date -j -f "%Y-%m-%d %H:%M:%S" "$timestamp" "+%s" 2>/dev/null || echo "0")
+        else
+            # No timestamp — treat as oldest (epoch=0) so it's cleaned up first
+            timestamp="(no timestamp)"
+            epoch="0"
+        fi
         DEPLOYMENT_DATA+=("$epoch|$dep_id|$timestamp")
     fi
 done <<< "$DEPLOYMENTS_FULL"
@@ -147,8 +184,6 @@ else
 fi
 
 echo "🔧 Creating new deployment..."
-# Extract version from code.gs for deployment description
-VERSION=$(grep -m1 "const VERSION" code.gs | sed "s/.*'\([^']*\)'.*/\1/" || echo "unknown")
 DEPLOYMENT_OUTPUT=$(clasp deploy --description "Chess Tracker v$VERSION - $(date '+%Y-%m-%d %H:%M:%S') git:$GIT_HASH")
 echo "$DEPLOYMENT_OUTPUT"
 
@@ -184,3 +219,28 @@ else
 fi
 
 echo "🎉 Deployment complete! The Chess Game Tracker form is now live."
+
+# ─── Update beta redirect ────────────────────────────────────────
+CHESS_CONFIG="$(dirname "$0")/.chess-redirect.conf"
+if [ -f "$CHESS_CONFIG" ]; then
+    source "$CHESS_CONFIG"
+    BETA_DOMAIN="${BETA_DOMAIN:-}"
+    BETA_SUBDOMAIN="${BETA_SUBDOMAIN:-}"
+    WEBSITE_REPO="${WEBSITE_REPO:-}"
+    WORKFLOW_FILE="${WORKFLOW_FILE:-update-chess-redirect.yml}"
+
+    if [ -n "$WEBSITE_REPO" ] && [ -n "$BETA_DOMAIN" ] && [ -n "$BETA_SUBDOMAIN" ] && command -v gh &> /dev/null; then
+        echo "🔗 Updating $BETA_DOMAIN → new deployment..."
+        gh workflow run "$WORKFLOW_FILE" \
+            --repo "$WEBSITE_REPO" \
+            --field "redirect_url=$WEB_APP_URL" \
+            --field "subdomain=$BETA_SUBDOMAIN" \
+            && echo "✅ $BETA_DOMAIN will update shortly (~30s)" \
+            || echo "⚠️  Failed to trigger redirect update — $BETA_DOMAIN not updated"
+    elif ! command -v gh &> /dev/null; then
+        echo "⚠️  gh CLI not found — beta redirect not updated"
+        echo "   Install with: brew install gh"
+    fi
+else
+    echo "ℹ️  No .chess-redirect.conf — skipping beta redirect update"
+fi

@@ -6,6 +6,8 @@ This file provides guidance for AI assistants when working with code in this rep
 
 This is a Google Apps Script chess game tracker that allows users to log their chess games and analyze performance over time. The form is specifically designed to work reliably within Google Apps Script's limitations using only proven patterns.
 
+**Documentation maintenance:** Update [CHANGELOG.md](CHANGELOG.md) for significant changes (new features, bug fixes, breaking changes).
+
 ## Architecture - GOOGLE APPS SCRIPT APPROACH
 
 - **Google Apps Script deployment**: Designed specifically for reliable GAS deployment
@@ -395,8 +397,14 @@ The project contains ready-to-deploy Google Apps Script files:
 
 - `code.gs` - Server-side Google Apps Script code
 - `index.html` - Complete HTML form with inline CSS and JavaScript
-- `README.md` - Includes complete deployment instructions
+- `admin-panel.html` - Owner-only admin interface
 - `appsscript.json` - Google Apps Script configuration
+- `deploy.sh` - Automated deployment script (also triggers beta redirect update)
+- `promote-stable.sh` - Promotes a deployment to stable + updates redirect
+- `.chess-redirect.conf.example` - Template for redirect configuration
+- `.chess-redirect.conf` - Actual redirect config (gitignored)
+- `.stable-deployment` - Pinned stable deployment ID
+- `README.md` - Includes complete deployment instructions
 
 ## Google Apps Script Architecture
 
@@ -575,14 +583,26 @@ cd chess-tracker
 ./deploy.sh
 ```
 - Requires a **clean git working tree** — fails with error if uncommitted changes exist
+- **Auto-syncs VERSION** from CHANGELOG.md → code.gs before pushing (amends the current commit if changed)
 - Embeds git commit hash in deployment description for traceability: `Deployment 2026-03-13 14:22:01 git:abc1234`
 - Cleans up old deployments, always keeping: (1) most recent, (2) pinned stable
 - Opens the new deployment URL in the browser automatically
+- Triggers beta redirect update via GitHub Action (if `.chess-redirect.conf` exists and `gh` CLI is available)
 
 ### Stable Version Management
 The deploy script reads `.stable-deployment` to determine which deployment ID to protect from cleanup.
 
-**To pin a new stable version:**
+**To pin a new stable version (preferred — use promote-stable.sh):**
+```bash
+./promote-stable.sh              # Promote most recent deployment
+./promote-stable.sh AKfycbw...   # Promote a specific deployment ID
+```
+This does three things:
+1. Updates `.stable-deployment` with the deployment ID
+2. Sets `LAST_STABLE_VERSION` in Script Properties via `clasp run`
+3. Triggers the GitHub Action to update the stable redirect URL
+
+**Manual method (fallback):**
 1. Confirm the deployment is working correctly
 2. Update `.stable-deployment` with the deployment ID (e.g. `AKfycbwu...`)
 3. Set `LAST_STABLE_VERSION` in the admin panel (display label only, e.g. "138")
@@ -591,12 +611,63 @@ The deploy script reads `.stable-deployment` to determine which deployment ID to
 - If `.stable-deployment` contains a valid `AK...` ID that exists in GAS: use it (pinned)
 - If file is missing/empty/invalid: fall back to the oldest deployment ≥8 hours older than most recent
 
+### Version Management
+
+**CHANGELOG.md is the single source of truth for version numbers.** The `deploy.sh` script automatically syncs the version to `code.gs` before pushing:
+
+1. Extracts latest version from first `## [x.y.z]` heading in CHANGELOG.md
+2. Compares against `const VERSION` in code.gs
+3. If different: updates `VERSION`, `LAST_UPDATED`, and header comment in code.gs
+4. Amends the current commit with the change (since deploy.sh requires a clean tree)
+
+**To bump the version:** Only update CHANGELOG.md with a new `## [x.y.z] - date` entry. The deploy script handles the rest.
+
 ### Manual Deployment (fallback)
 1. Copy `code.gs` to Google Apps Script project
 2. Copy `index.html` as HTML file named "index"
 3. Copy `admin-panel.html` as HTML file named "admin-panel"
 4. Deploy as Web App with "Execute as: Me" and "Access: Anyone"
 5. Test form submission and admin panel (`?admin=true`)
+
+## Custom Domain Redirects
+
+Two subdomains provide stable, memorable URLs for the chess tracker:
+- **Stable**: `ct.carlosiflores.com` → pinned stable deployment (updated by `promote-stable.sh`)
+- **Beta**: `bct.carlosiflores.com` → latest deployment (updated automatically by `deploy.sh`)
+
+### How It Works
+
+nginx on the Digital Ocean droplet serves 302 redirects to GAS deployment URLs. The redirect URLs are stored in snippet files on the droplet (`/etc/nginx/conf.d/`) using the `map` directive (constant variable at `http` level):
+
+```nginx
+map "" $chess_tracker_redirect_url { default "https://script.google.com/macros/s/AK.../exec"; }
+```
+
+### Configuration
+
+**`.chess-redirect.conf`** (gitignored — actual values):
+```bash
+WEBSITE_REPO="owner/repo"
+WORKFLOW_FILE="update-chess-redirect.yml"
+STABLE_DOMAIN="ct.example.com"
+BETA_DOMAIN="bct.example.com"
+STABLE_SUBDOMAIN="ct"
+BETA_SUBDOMAIN="bct"
+```
+Copy `.chess-redirect.conf.example` and fill in values. Both `deploy.sh` and `promote-stable.sh` source this file.
+
+### Workflow
+1. `./deploy.sh` → deploys to GAS, auto-updates **beta** redirect
+2. Test at `bct.carlosiflores.com`
+3. `./promote-stable.sh` → pins deployment as stable, updates **stable** redirect
+4. Users always access `ct.carlosiflores.com` — no bookmark changes needed
+
+### Cross-Repo Architecture
+- **chess-tracker** (this repo): `deploy.sh`, `promote-stable.sh`, `.chess-redirect.conf`
+- **website repo** (private): nginx config (`docs/ct.carlosiflores.com.nginx`), GitHub Action (`update-chess-redirect.yml`)
+- **Droplet**: nginx server blocks + redirect URL snippet files in `/etc/nginx/conf.d/`
+
+See [backlog/CUSTOM_DOMAIN_FEATURE.md](backlog/CUSTOM_DOMAIN_FEATURE.md) for the full spec.
 
 ## Admin Panel
 

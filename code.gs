@@ -1,7 +1,7 @@
 /**
  * Google Apps Script Server Code - Chess Game Tracker
- * Version: 2.0.0
- * Last Updated: 2026-01-12
+ * Version: 2.6.0
+ * Last Updated: 2026-03-29
  * 
  * Features:
  * - Chess game logging with result tracking
@@ -10,10 +10,11 @@
  * - Mulligan tracking
  * - Picture uploads to Google Drive
  * - Rate limiting and input validation
+ * - Beta deployment detection
  */
 
-const VERSION = '2.0.0';
-const LAST_UPDATED = '2026-01-12';
+const VERSION = '2.6.0';
+const LAST_UPDATED = '2026-03-29';
 
 // ===== CONFIGURATION CONSTANTS =====
 
@@ -165,8 +166,10 @@ function doGet(e) {
 
     var template = HtmlService.createTemplateFromFile('index');
     template.scriptUrl = ScriptApp.getService().getUrl();
+    template.isBeta = isBetaDeployment();
+    var title = template.isBeta ? 'Chess Game Tracker (Beta)' : 'Chess Game Tracker';
     return template.evaluate()
-      .setTitle('Chess Game Tracker')
+      .setTitle(title)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 
   } catch (error) {
@@ -203,8 +206,10 @@ function serveAdminPanel(e) {
 
   var template = HtmlService.createTemplateFromFile('admin-panel');
   template.scriptUrl = ScriptApp.getService().getUrl();
+  template.isBeta = isBetaDeployment();
+  var title = template.isBeta ? 'Admin Panel - Chess Tracker (Beta)' : 'Admin Panel - Chess Tracker';
   return template.evaluate()
-    .setTitle('Admin Panel - Chess Tracker')
+    .setTitle(title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
 }
 
@@ -392,6 +397,27 @@ function adminSaveConfig(newConfig) {
   }
 }
 
+// ===== DEPLOYMENT DETECTION =====
+
+/**
+ * Detects if the current deployment is NOT the stable deployment.
+ * Compares current URL's deployment ID against the STABLE_DEPLOYMENT_ID property.
+ * @returns {boolean} true if this is a non-stable (beta) deployment
+ */
+function isBetaDeployment() {
+  try {
+    var stableId = PropertiesService.getScriptProperties().getProperty('STABLE_DEPLOYMENT_ID');
+    if (!stableId) return false; // No stable ID set — assume stable
+    var currentUrl = ScriptApp.getService().getUrl();
+    // URL format: https://script.google.com/macros/s/AK.../exec
+    var match = currentUrl.match(/\/macros\/s\/(AK[a-zA-Z0-9_-]+)\//)
+    if (!match) return false;
+    return match[1] !== stableId;
+  } catch (e) {
+    return false;
+  }
+}
+
 // ===== STABLE VERSION MANAGEMENT =====
 
 /**
@@ -438,6 +464,34 @@ function adminSetStableVersion(version) {
   });
 
   return { success: true, message: 'Stable version set to ' + versionStr };
+}
+
+/**
+ * Admin API: Set the stable deployment ID
+ * Used by promote-stable.sh to record which deployment ID is stable,
+ * enabling beta detection in doGet().
+ * Owner-only access
+ * @param {string} deploymentId - Full AK... deployment ID
+ * @returns {Object} Success response
+ */
+function adminSetStableDeploymentId(deploymentId) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  var idStr = (deploymentId || '').toString().trim();
+  if (!idStr.match(/^AK[a-zA-Z0-9_-]+$/)) {
+    throw new Error('Invalid deployment ID format');
+  }
+
+  PropertiesService.getScriptProperties().setProperty('STABLE_DEPLOYMENT_ID', idStr);
+
+  logEvent('admin_set_stable_deployment_id', {
+    deploymentId: idStr,
+    user: Session.getEffectiveUser().getEmail()
+  });
+
+  return { success: true, message: 'Stable deployment ID set to ' + idStr };
 }
 
 // ===== ADMIN SESSION MANAGEMENT =====

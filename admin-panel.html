@@ -55,6 +55,18 @@
       color: #9f67ff;
     }
 
+    .beta-tag {
+      display: inline-block;
+      background: linear-gradient(135deg, #f59e0b, #d97706);
+      color: #000;
+      font-size: 0.5em;
+      font-weight: 800;
+      padding: 2px 8px;
+      border-radius: 4px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
     /* Navigation */
     .admin-nav {
       background: #111111;
@@ -899,7 +911,7 @@
 <body>
   <!-- Header -->
   <div class="admin-header">
-    <h1>🛡️ Chess Tracker Admin Panel</h1>
+    <h1>🛡️ Chess Tracker Admin Panel<? if (isBeta) { ?> <span class="beta-tag">Beta</span><? } ?></h1>
     <div class="admin-header-right">
       <span id="admin-user">👤 Loading...</span>
       <span>|</span>

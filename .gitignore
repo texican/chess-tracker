@@ -6,6 +6,7 @@
 
 # Local configuration
 CLAUDE.local.md
+.chess-redirect.conf
 # Node modules
 /node_modules
 
