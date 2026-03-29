@@ -911,6 +911,141 @@
         justify-content: center;
       }
     }
+
+    /* Edit Controls */
+    .edit-btn {
+      background: transparent;
+      border: 1px solid #444;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+
+    .edit-btn:hover {
+      background: #333;
+      color: #7c3aed;
+      border-color: #7c3aed;
+    }
+
+    .edit-btn.active {
+      background: #7c3aed;
+      color: white;
+      border-color: #7c3aed;
+    }
+
+    /* Venue Edit Row */
+    .venue-edit-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #333;
+      margin-bottom: 10px;
+    }
+
+    .venue-edit-row label {
+      color: #888;
+      font-size: 0.85rem;
+      min-width: 50px;
+    }
+
+    .venue-edit-row select {
+      flex: 1;
+      padding: 8px 12px;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 6px;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+    }
+
+    .venue-display {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .venue-display .venue-name {
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    /* Match Edit Form */
+    .match-edit-form {
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 10px 0;
+    }
+
+    .match-edit-form .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .match-edit-form .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .match-edit-form label {
+      font-size: 0.75rem;
+      color: #888;
+      text-transform: uppercase;
+    }
+
+    .match-edit-form select,
+    .match-edit-form input,
+    .match-edit-form textarea {
+      padding: 8px 10px;
+      background: #0a0a0a;
+      border: 1px solid #333;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 0.85rem;
+    }
+
+    .match-edit-form textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .match-edit-form .form-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+    }
+
+    .match-item-with-edit {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .match-item-content {
+      flex: 1;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .match-item.editing {
+      background: #1a1a1a;
+      border-radius: 8px;
+      padding: 0;
+      border: 1px solid #7c3aed;
+    }
   </style>
 </head>
 <body>
@@ -1059,6 +1194,20 @@
           <button class="modal-close" onclick="closeSessionModal()">&times;</button>
         </div>
         <div class="modal-body">
+          <!-- Venue Edit Row -->
+          <div class="venue-edit-row" id="venue-edit-row">
+            <label>Venue:</label>
+            <div id="venue-display" class="venue-display">
+              <span class="venue-name" id="venue-name-display">Loading...</span>
+              <button class="edit-btn" id="venue-edit-btn" onclick="toggleVenueEdit()">✏️ Edit</button>
+            </div>
+            <div id="venue-edit-controls" style="display: none; flex: 1; gap: 10px; align-items: center;">
+              <select id="venue-select" style="flex: 1;"></select>
+              <button class="btn btn-primary btn-small" onclick="saveVenueEdit()">Save</button>
+              <button class="btn btn-secondary btn-small" onclick="cancelVenueEdit()">Cancel</button>
+            </div>
+          </div>
+
           <!-- Session Meta -->
           <div class="modal-section">
             <div class="session-stats-grid" id="session-stats-grid">
@@ -1082,7 +1231,7 @@
                 <thead>
                   <tr>
                     <th>Player</th>
-                    <th>Games</th>
+                    <th>Matches</th>
                     <th>W</th>
                     <th>L</th>
                     <th>D</th>
@@ -1739,6 +1888,9 @@
     }
 
     function renderSessionDetails(data) {
+      // Store current session data for editing
+      sessionsState.currentSessionData = data;
+
       var meta = data.meta || {};
       var hasMetaData = data.meta !== null && data.meta !== undefined;
 
@@ -1756,11 +1908,16 @@
 
       // Update title
       var dateStr = startDate ? formatDate(startDate) : '';
-      var titleText = venue + (dateStr ? ' - ' + dateStr : '');
+      var titleText = dateStr || 'Session Details';
       if (!hasMetaData) {
         titleText += ' (stats need recompute)';
       }
       document.getElementById('modal-title').textContent = titleText;
+
+      // Update venue display
+      document.getElementById('venue-name-display').textContent = venue;
+      sessionsState.currentVenue = venue;
+      resetVenueEditState();
 
       // Stats grid
       var statsHtml =
@@ -1819,7 +1976,9 @@
           var resultText = match.winner === 'Draw' ? 'Draw' : match.winner + ' wins';
 
           matchesHtml +=
-            '<div class="match-item">' +
+            '<div class="match-item" id="match-item-' + j + '" data-row-index="' + match.rowIndex + '">' +
+            '<div class="match-item-with-edit">' +
+            '<div class="match-item-content">' +
             '<span class="match-time">' + matchTime + '</span>' +
             '<span class="match-players">' +
             '<span class="match-players-white">' + escapeHtml(match.whitePlayer) + '</span>' +
@@ -1827,6 +1986,10 @@
             '<span class="match-players-black">' + escapeHtml(match.blackPlayer) + '</span>' +
             '</span>' +
             '<span class="match-result ' + resultClass + '">' + resultText + '</span>' +
+            '</div>' +
+            '<button class="edit-btn" onclick="toggleMatchEdit(' + j + ')">✏️</button>' +
+            '</div>' +
+            '<div class="match-edit-form" id="match-edit-form-' + j + '" style="display: none;"></div>' +
             '</div>';
         }
       } else {
@@ -1844,6 +2007,210 @@
       if (event.target.id === 'session-modal') {
         closeSessionModal();
       }
+    }
+
+    // ===== VENUE EDITING =====
+
+    function resetVenueEditState() {
+      document.getElementById('venue-display').style.display = 'flex';
+      document.getElementById('venue-edit-controls').style.display = 'none';
+      document.getElementById('venue-edit-btn').classList.remove('active');
+    }
+
+    function toggleVenueEdit() {
+      var displayEl = document.getElementById('venue-display');
+      var controlsEl = document.getElementById('venue-edit-controls');
+      var editBtn = document.getElementById('venue-edit-btn');
+
+      if (controlsEl.style.display === 'none') {
+        // Enter edit mode
+        displayEl.style.display = 'none';
+        controlsEl.style.display = 'flex';
+        editBtn.classList.add('active');
+
+        // Populate venue dropdown from config
+        var select = document.getElementById('venue-select');
+        select.innerHTML = '';
+        var venues = currentConfig.venues || [];
+        for (var i = 0; i < venues.length; i++) {
+          var opt = document.createElement('option');
+          opt.value = venues[i];
+          opt.textContent = venues[i];
+          if (venues[i] === sessionsState.currentVenue) {
+            opt.selected = true;
+          }
+          select.appendChild(opt);
+        }
+      } else {
+        // Exit edit mode
+        resetVenueEditState();
+      }
+    }
+
+    function cancelVenueEdit() {
+      resetVenueEditState();
+    }
+
+    function saveVenueEdit() {
+      var newVenue = document.getElementById('venue-select').value;
+      if (!newVenue || newVenue === sessionsState.currentVenue) {
+        resetVenueEditState();
+        return;
+      }
+
+      var controlsEl = document.getElementById('venue-edit-controls');
+      controlsEl.innerHTML = '<span style="color: #888;">Saving...</span>';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result || !result.success) {
+            showSessionsAlert('Error: ' + (result ? result.error : 'No response'), 'error');
+            resetVenueEditState();
+            return;
+          }
+          showSessionsAlert('Venue updated successfully', 'success');
+          sessionsState.currentVenue = newVenue;
+          document.getElementById('venue-name-display').textContent = newVenue;
+          resetVenueEditState();
+          loadSessions(); // Refresh list
+        })
+        .withFailureHandler(function(error) {
+          showSessionsAlert('Error: ' + error.message, 'error');
+          resetVenueEditState();
+        })
+        .adminUpdateSession(sessionsState.currentSessionId, newVenue);
+    }
+
+    // ===== MATCH EDITING =====
+
+    function toggleMatchEdit(matchIndex) {
+      var formEl = document.getElementById('match-edit-form-' + matchIndex);
+      var itemEl = document.getElementById('match-item-' + matchIndex);
+
+      if (formEl.style.display === 'none') {
+        // Close any other open edit forms
+        var allForms = document.querySelectorAll('.match-edit-form');
+        for (var i = 0; i < allForms.length; i++) {
+          allForms[i].style.display = 'none';
+          allForms[i].parentElement.classList.remove('editing');
+        }
+
+        // Open this edit form
+        itemEl.classList.add('editing');
+        formEl.style.display = 'block';
+        renderMatchEditForm(matchIndex);
+      } else {
+        // Close edit form
+        formEl.style.display = 'none';
+        itemEl.classList.remove('editing');
+      }
+    }
+
+    function renderMatchEditForm(matchIndex) {
+      var match = sessionsState.currentSessionData.matches[matchIndex];
+      var formEl = document.getElementById('match-edit-form-' + matchIndex);
+      var players = currentConfig.players || [];
+
+      var gameEndings = ['Checkmate', 'Resignation', 'Time Out', 'Stalemate', 'Insufficient Material', 'Threefold Repetition', '50-Move Rule', 'Agreement'];
+
+      var whiteOptions = '';
+      var blackOptions = '';
+      for (var i = 0; i < players.length; i++) {
+        whiteOptions += '<option value="' + escapeHtml(players[i]) + '"' + (players[i] === match.whitePlayer ? ' selected' : '') + '>' + escapeHtml(players[i]) + '</option>';
+        blackOptions += '<option value="' + escapeHtml(players[i]) + '"' + (players[i] === match.blackPlayer ? ' selected' : '') + '>' + escapeHtml(players[i]) + '</option>';
+      }
+
+      var winnerOptions =
+        '<option value="White"' + (match.winner === 'White' ? ' selected' : '') + '>White</option>' +
+        '<option value="Black"' + (match.winner === 'Black' ? ' selected' : '') + '>Black</option>' +
+        '<option value="Draw"' + (match.winner === 'Draw' ? ' selected' : '') + '>Draw</option>';
+
+      var endingOptions = '';
+      for (var j = 0; j < gameEndings.length; j++) {
+        endingOptions += '<option value="' + gameEndings[j] + '"' + (gameEndings[j] === match.gameEnding ? ' selected' : '') + '>' + gameEndings[j] + '</option>';
+      }
+
+      formEl.innerHTML =
+        '<div class="form-row">' +
+        '<div class="form-group"><label>White Player</label><select id="edit-white-' + matchIndex + '">' + whiteOptions + '</select></div>' +
+        '<div class="form-group"><label>Black Player</label><select id="edit-black-' + matchIndex + '">' + blackOptions + '</select></div>' +
+        '<div class="form-group"><label>Winner</label><select id="edit-winner-' + matchIndex + '">' + winnerOptions + '</select></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group"><label>Game Ending</label><select id="edit-ending-' + matchIndex + '" onchange="checkTimeLimitRequired(' + matchIndex + ')">' + endingOptions + '</select></div>' +
+        '<div class="form-group"><label>Time Limit</label><input type="text" id="edit-timelimit-' + matchIndex + '" value="' + escapeHtml(match.timeLimit || '') + '" placeholder="e.g. 5+3"></div>' +
+        '<div class="form-group"><label>Brutality (0-10)</label><input type="number" id="edit-brutality-' + matchIndex + '" min="0" max="10" value="' + (match.brutality || 0) + '"></div>' +
+        '</div>' +
+        '<div class="form-row">' +
+        '<div class="form-group" style="grid-column: 1 / -1;"><label>Notes</label><textarea id="edit-notes-' + matchIndex + '" placeholder="Game notes...">' + escapeHtml(match.notes || '') + '</textarea></div>' +
+        '</div>' +
+        '<div class="form-actions">' +
+        '<button class="btn btn-secondary btn-small" onclick="toggleMatchEdit(' + matchIndex + ')">Cancel</button>' +
+        '<button class="btn btn-primary btn-small" onclick="saveMatchEdit(' + matchIndex + ')">Save Changes</button>' +
+        '</div>';
+    }
+
+    function checkTimeLimitRequired(matchIndex) {
+      var ending = document.getElementById('edit-ending-' + matchIndex).value;
+      var timeLimitInput = document.getElementById('edit-timelimit-' + matchIndex);
+      if (ending === 'Time Out') {
+        timeLimitInput.required = true;
+        timeLimitInput.style.borderColor = '#7c3aed';
+      } else {
+        timeLimitInput.required = false;
+        timeLimitInput.style.borderColor = '#333';
+      }
+    }
+
+    function saveMatchEdit(matchIndex) {
+      var match = sessionsState.currentSessionData.matches[matchIndex];
+      var rowIndex = match.rowIndex;
+
+      var updates = {
+        whitePlayer: document.getElementById('edit-white-' + matchIndex).value,
+        blackPlayer: document.getElementById('edit-black-' + matchIndex).value,
+        winner: document.getElementById('edit-winner-' + matchIndex).value,
+        gameEnding: document.getElementById('edit-ending-' + matchIndex).value,
+        timeLimit: document.getElementById('edit-timelimit-' + matchIndex).value,
+        brutality: parseInt(document.getElementById('edit-brutality-' + matchIndex).value, 10) || 0,
+        notes: document.getElementById('edit-notes-' + matchIndex).value
+      };
+
+      // Client-side validation
+      if (updates.whitePlayer === updates.blackPlayer) {
+        showSessionsAlert('White and black players must be different', 'error');
+        return;
+      }
+
+      if (updates.gameEnding === 'Time Out' && !updates.timeLimit) {
+        showSessionsAlert('Time limit is required for Time Out ending', 'error');
+        return;
+      }
+
+      var formEl = document.getElementById('match-edit-form-' + matchIndex);
+      var saveBtn = formEl.querySelector('.btn-primary');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result || !result.success) {
+            showSessionsAlert('Error: ' + (result ? result.error : 'No response'), 'error');
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Changes';
+            return;
+          }
+          showSessionsAlert('Match updated successfully', 'success');
+          // Refresh modal data
+          openSessionDetails(sessionsState.currentSessionId);
+          loadSessions(); // Refresh list
+        })
+        .withFailureHandler(function(error) {
+          showSessionsAlert('Error: ' + error.message, 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Changes';
+        })
+        .adminUpdateMatch(rowIndex, updates);
     }
 
     function recomputeCurrentSession() {

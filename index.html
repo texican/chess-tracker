@@ -2323,18 +2323,18 @@
         var h1 = container ? container.querySelector('h1') : document.querySelector('h1');
         if (!h1) return;
 
-        // Preserve original text once
-        if (!h1.dataset.origText) h1.dataset.origText = h1.textContent;
-        var orig = h1.dataset.origText;
+        // Preserve original innerHTML once (keeps <span> elements like beta tag)
+        if (!h1.dataset.origHtml) h1.dataset.origHtml = h1.innerHTML;
+        var orig = h1.dataset.origHtml;
 
         var width = container ? container.clientWidth : window.innerWidth;
 
         if (width <= 300) {
           // Remove a single leading emoji (including optional variation selector) and one following space
           var stripped = orig.replace(/^[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]\uFE0F?\s?/u, '');
-          h1.textContent = stripped;
+          h1.innerHTML = stripped;
         } else {
-          h1.textContent = orig;
+          h1.innerHTML = orig;
         }
       }
 
@@ -2578,7 +2578,7 @@
       if (!gameEnding) {
         var endingHelp = document.getElementById('ending-help');
         if (endingHelp) {
-          endingHelp.textContent = '❌ Please select how game ended';
+          endingHelp.textContent = '❌ Please select how match ended';
           endingHelp.classList.add('show', 'error');
         }
         hasErrors = true;
@@ -2639,12 +2639,12 @@
         hasErrors = true;
       }
 
-      // Check if timed game is under 1 minute (only when time limit is set)
+      // Check if timed match is under 1 minute (only when time limit is set)
       if (hasTimeLimit) {
         var totalSeconds = (parseInt(timeLimitMinutes) || 0) * 60 + (parseInt(timeLimitSeconds) || 0);
         if (totalSeconds < 60) {
           if (timeLimitHelp) {
-            timeLimitHelp.textContent = '❌ Timed games must be at least 1 minute';
+            timeLimitHelp.textContent = '❌ Timed matches must be at least 1 minute';
             timeLimitHelp.classList.add('show', 'error');
           }
           hasErrors = true;
@@ -2710,7 +2710,7 @@
             alert('❌ Request timed out. Please check your internet connection and try again.');
 
             var submitBtn = document.querySelector('.submit-btn');
-            submitBtn.textContent = 'Log Chess Game';
+            submitBtn.textContent = 'Log Match';
             submitBtn.disabled = false;
             submitBtn.style.opacity = '1';
           }, 30000);
@@ -2734,7 +2734,7 @@
           alert('❌ JavaScript error submitting form: ' + error.message + '. Please try refreshing the page.');
 
           var submitBtn = document.querySelector('.submit-btn');
-          submitBtn.textContent = 'Log Chess Game';
+          submitBtn.textContent = 'Log Match';
           submitBtn.disabled = false;
           submitBtn.style.opacity = '1';
         }
@@ -2802,7 +2802,7 @@
       alert('❌ Error: ' + error.message);
 
       var submitBtn = document.querySelector('.submit-btn');
-      submitBtn.textContent = 'Log Chess Game';
+      submitBtn.textContent = 'Log Match';
       submitBtn.disabled = false;
       submitBtn.style.opacity = '1';
 
@@ -3048,7 +3048,7 @@
       var totalGames = whiteWins + blackWins + draws;
 
       if (totalGames === 0) {
-        return; // No games to display
+        return; // No matches to display
       }
 
       var whitePercent = Math.round((whiteWins / totalGames) * 100);
@@ -3138,7 +3138,7 @@
         card.innerHTML = 
           '<div class="stat-card-header">' +
             '<span class="stat-card-name" style="color: ' + color + ';">' + stat.player + '</span>' +
-            '<span class="stat-total">' + totalGames + ' total games</span>' +
+            '<span class="stat-total">' + totalGames + ' total matches</span>' +
             '<div class="stat-brutality" style="margin-left: auto;">' +
               '<div class="stat-brutality-item"><span>🗡️</span><span>' + (stat.inflicted || 0) + '</span></div>' +
               '<div class="stat-brutality-item"><span>😭</span><span>' + (stat.suffered || 0) + '</span></div>' +

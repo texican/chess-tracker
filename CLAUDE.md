@@ -769,6 +769,18 @@ All functions check `isScriptOwner()` first and return error response if unautho
 - Parameters: sessionId (required), deleteMatches (boolean - if true, also deletes matches from Matches sheet)
 - Returns: `{ success, message, deletedMatches }` (flat structure)
 
+**adminUpdateSession(sessionId, newVenue):**
+- Updates session venue in Sessions sheet and all matches with the session ID
+- Parameters: sessionId (required), newVenue (required, must be ≤100 chars)
+- Returns: `{ success, message, matchesUpdated }` (flat structure)
+
+**adminUpdateMatch(rowIndex, updates):**
+- Updates individual match details in Matches sheet
+- Parameters: rowIndex (1-based row in Matches sheet), updates object with optional fields: whitePlayer, blackPlayer, winner, gameEnding, timeLimit, brutality, notes, venue
+- Validation: players must be different, winner must be White/Black/Draw, game ending must be valid, brutality 0-10, time limit required for Time Out ending
+- Auto-recomputes session stats if winner, players, or brutality changed
+- Returns: `{ success, message, fieldsUpdated }` (flat structure)
+
 ### Session Management Tab (Implemented)
 
 The Sessions tab provides a complete interface for managing chess sessions:

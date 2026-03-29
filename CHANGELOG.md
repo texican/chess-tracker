@@ -5,6 +5,21 @@ All notable changes to the Chess Game Tracker project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2026-03-29
+
+### Added - Session & Match Editing
+- **Edit session venue** — click edit button in session details modal to change venue for all matches in session
+- **Edit match details** — click edit button on any match to modify players, winner, game ending, time limit, brutality, and notes
+- `adminUpdateSession()` API — updates Sessions sheet and all matches with the session ID
+- `adminUpdateMatch()` API — updates individual match row with validation and auto-recomputes session stats
+
+### Technical
+- Session data stored in `sessionsState.currentSessionData` for editing context
+- Match edit forms dynamically rendered with current config (players, game endings)
+- Client-side validation for player uniqueness and Time Out time limit requirement
+
+---
+
 ## [2.6.2] - 2026-03-29
 
 ### Fixed

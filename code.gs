@@ -1,10 +1,10 @@
 /**
- * Google Apps Script Server Code - Chess Game Tracker
+ * Google Apps Script Server Code - Chess Match Tracker
  * Version: 2.6.2
  * Last Updated: 2026-03-29
  * 
  * Features:
- * - Chess game logging with result tracking
+ * - Chess match logging with result tracking
  * - Session-based analytics with configurable time gaps
  * - Player and venue management
  * - Mulligan tracking
@@ -152,7 +152,7 @@ function getConfig() {
 /**
  * Serves the HTML form when web app is accessed
  * @param {Object} e - Event object with request parameters
- * @returns {HtmlOutput} The chess game logging form
+ * @returns {HtmlOutput} The chess match logging form
  */
 function doGet(e) {
   try {
@@ -167,7 +167,7 @@ function doGet(e) {
     var template = HtmlService.createTemplateFromFile('index');
     template.scriptUrl = ScriptApp.getService().getUrl();
     template.isBeta = isBetaDeployment();
-    var title = template.isBeta ? 'Chess Game Tracker (Beta)' : 'Chess Game Tracker';
+    var title = template.isBeta ? 'Chess Match Tracker (Beta)' : 'Chess Match Tracker';
     return template.evaluate()
       .setTitle(title)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -867,6 +867,250 @@ function adminDeleteSession(sessionId, deleteMatches) {
   }
 }
 
+/**
+ * Update session venue
+ * Updates the Sessions sheet and all matches in the session
+ * @param {string} sessionId - Session to update
+ * @param {string} newVenue - New venue name
+ * @returns {Object} { success, message } or { success: false, error }
+ */
+function adminUpdateSession(sessionId, newVenue) {
+  if (!isScriptOwner()) {
+    return { success: false, error: 'Unauthorized: Admin access restricted to script owner' };
+  }
+
+  if (!sessionId) {
+    return { success: false, error: 'Session ID is required' };
+  }
+
+  if (!newVenue || typeof newVenue !== 'string') {
+    return { success: false, error: 'Venue is required' };
+  }
+
+  newVenue = newVenue.trim();
+  if (newVenue.length === 0) {
+    return { success: false, error: 'Venue cannot be empty' };
+  }
+
+  if (newVenue.length > VALIDATION_LIMITS.VENUE_MAX) {
+    return { success: false, error: 'Venue name exceeds maximum length' };
+  }
+
+  try {
+    var spreadsheet = getOrCreateSpreadsheet();
+    var matchesUpdated = 0;
+
+    // Update all matches with this session ID
+    var matchesSheet = spreadsheet.getSheetByName('Matches');
+    if (matchesSheet && matchesSheet.getLastRow() > 1) {
+      var matchData = matchesSheet.getDataRange().getValues();
+      var matchHeaders = matchData[0];
+      var sessionIdCol = matchHeaders.indexOf('Session ID');
+      var venueCol = matchHeaders.indexOf('Venue');
+
+      for (var i = 1; i < matchData.length; i++) {
+        if (matchData[i][sessionIdCol] === sessionId) {
+          matchesSheet.getRange(i + 1, venueCol + 1).setValue(newVenue);
+          matchesUpdated++;
+        }
+      }
+    }
+
+    // Update Sessions sheet
+    var sessionsSheet = spreadsheet.getSheetByName('Sessions');
+    if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
+      var sessionsData = sessionsSheet.getDataRange().getValues();
+      var sessionHeaders = sessionsData[0];
+      var sidCol = sessionHeaders.indexOf('Session ID');
+      var sVenueCol = sessionHeaders.indexOf('Venue');
+
+      for (var j = 1; j < sessionsData.length; j++) {
+        if (sessionsData[j][sidCol] === sessionId) {
+          sessionsSheet.getRange(j + 1, sVenueCol + 1).setValue(newVenue);
+          break;
+        }
+      }
+    }
+
+    logEvent('admin_update_session', {
+      sessionId: sessionId,
+      newVenue: newVenue,
+      matchesUpdated: matchesUpdated,
+      user: Session.getEffectiveUser().getEmail()
+    });
+
+    return {
+      success: true,
+      message: 'Session updated: ' + matchesUpdated + ' matches updated',
+      matchesUpdated: matchesUpdated
+    };
+
+  } catch (error) {
+    logEvent('admin_update_session_error', { sessionId: sessionId, error: error.toString() });
+    return { success: false, error: error.message || error.toString() };
+  }
+}
+
+/**
+ * Update match details
+ * @param {number} rowIndex - 1-based row index in Matches sheet (including header)
+ * @param {Object} updates - Fields to update: { whitePlayer, blackPlayer, winner, gameEnding, timeLimit, brutality, notes, venue }
+ * @returns {Object} { success, message } or { success: false, error }
+ */
+function adminUpdateMatch(rowIndex, updates) {
+  if (!isScriptOwner()) {
+    return { success: false, error: 'Unauthorized: Admin access restricted to script owner' };
+  }
+
+  if (!rowIndex || rowIndex < 2) {
+    return { success: false, error: 'Valid row index is required (must be >= 2)' };
+  }
+
+  if (!updates || typeof updates !== 'object') {
+    return { success: false, error: 'Updates object is required' };
+  }
+
+  try {
+    var spreadsheet = getOrCreateSpreadsheet();
+    var matchesSheet = spreadsheet.getSheetByName('Matches');
+
+    if (!matchesSheet || matchesSheet.getLastRow() < rowIndex) {
+      return { success: false, error: 'Row does not exist' };
+    }
+
+    var headers = matchesSheet.getRange(1, 1, 1, matchesSheet.getLastColumn()).getValues()[0];
+    var rowData = matchesSheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+    var sessionId = rowData[headers.indexOf('Session ID')];
+    var fieldsUpdated = [];
+
+    // Validate and apply updates
+    if (updates.whitePlayer !== undefined) {
+      var whitePlayer = updates.whitePlayer.toString().trim();
+      if (whitePlayer.length === 0) {
+        return { success: false, error: 'White player cannot be empty' };
+      }
+      if (whitePlayer.length > VALIDATION_LIMITS.PLAYER_NAME_MAX) {
+        return { success: false, error: 'White player name exceeds maximum length' };
+      }
+      var col = headers.indexOf('White Player');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(whitePlayer);
+      fieldsUpdated.push('whitePlayer');
+    }
+
+    if (updates.blackPlayer !== undefined) {
+      var blackPlayer = updates.blackPlayer.toString().trim();
+      if (blackPlayer.length === 0) {
+        return { success: false, error: 'Black player cannot be empty' };
+      }
+      if (blackPlayer.length > VALIDATION_LIMITS.PLAYER_NAME_MAX) {
+        return { success: false, error: 'Black player name exceeds maximum length' };
+      }
+      var col = headers.indexOf('Black Player');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(blackPlayer);
+      fieldsUpdated.push('blackPlayer');
+    }
+
+    // Re-read row if players were updated, for validation
+    if (updates.whitePlayer !== undefined || updates.blackPlayer !== undefined) {
+      rowData = matchesSheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+      var white = rowData[headers.indexOf('White Player')];
+      var black = rowData[headers.indexOf('Black Player')];
+      if (white === black) {
+        return { success: false, error: 'White and black players must be different' };
+      }
+    }
+
+    if (updates.winner !== undefined) {
+      var winner = updates.winner.toString().trim();
+      if (!VALID_VALUES.WINNER.includes(winner)) {
+        return { success: false, error: 'Winner must be White, Black, or Draw' };
+      }
+      var col = headers.indexOf('Winner');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(winner);
+      fieldsUpdated.push('winner');
+    }
+
+    if (updates.gameEnding !== undefined) {
+      var gameEnding = updates.gameEnding.toString().trim();
+      if (!VALID_VALUES.GAME_ENDINGS.includes(gameEnding)) {
+        return { success: false, error: 'Invalid game ending value' };
+      }
+      var col = headers.indexOf('Game Ending');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(gameEnding);
+      fieldsUpdated.push('gameEnding');
+    }
+
+    if (updates.timeLimit !== undefined) {
+      var timeLimit = updates.timeLimit;
+      var col = headers.indexOf('Time Limit');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(timeLimit);
+      fieldsUpdated.push('timeLimit');
+    }
+
+    // Validate time limit requirement for Time Out ending
+    rowData = matchesSheet.getRange(rowIndex, 1, 1, headers.length).getValues()[0];
+    var currentEnding = rowData[headers.indexOf('Game Ending')];
+    var currentTimeLimit = rowData[headers.indexOf('Time Limit')];
+    if (currentEnding === 'Time Out' && (!currentTimeLimit || currentTimeLimit.toString().trim() === '')) {
+      return { success: false, error: 'Time limit is required when game ending is Time Out' };
+    }
+
+    if (updates.brutality !== undefined) {
+      var brutality = parseInt(updates.brutality, 10);
+      if (isNaN(brutality) || brutality < 0 || brutality > 10) {
+        return { success: false, error: 'Brutality must be a number between 0 and 10' };
+      }
+      var col = headers.indexOf('Brutality');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(brutality);
+      fieldsUpdated.push('brutality');
+    }
+
+    if (updates.notes !== undefined) {
+      var notes = updates.notes.toString().trim();
+      if (notes.length > VALIDATION_LIMITS.NOTES_MAX) {
+        return { success: false, error: 'Notes exceed maximum length' };
+      }
+      var col = headers.indexOf('Notes');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(notes);
+      fieldsUpdated.push('notes');
+    }
+
+    if (updates.venue !== undefined) {
+      var venue = updates.venue.toString().trim();
+      if (venue.length > VALIDATION_LIMITS.VENUE_MAX) {
+        return { success: false, error: 'Venue exceeds maximum length' };
+      }
+      var col = headers.indexOf('Venue');
+      matchesSheet.getRange(rowIndex, col + 1).setValue(venue);
+      fieldsUpdated.push('venue');
+    }
+
+    // Recompute session stats if we changed relevant fields
+    var statsFields = ['winner', 'whitePlayer', 'blackPlayer', 'brutality'];
+    var needsRecompute = fieldsUpdated.some(function(f) { return statsFields.includes(f); });
+    if (needsRecompute && sessionId) {
+      recomputeSessionStats(sessionId);
+    }
+
+    logEvent('admin_update_match', {
+      rowIndex: rowIndex,
+      fieldsUpdated: fieldsUpdated,
+      sessionId: sessionId,
+      user: Session.getEffectiveUser().getEmail()
+    });
+
+    return {
+      success: true,
+      message: 'Match updated: ' + fieldsUpdated.join(', '),
+      fieldsUpdated: fieldsUpdated
+    };
+
+  } catch (error) {
+    logEvent('admin_update_match_error', { rowIndex: rowIndex, error: error.toString() });
+    return { success: false, error: error.message || error.toString() };
+  }
+}
+
 // ===== BACKUP MANAGEMENT =====
 
 /**
@@ -1026,7 +1270,7 @@ function inferVenueFromSession(sheet, sessionId) {
 // ===== FORM SUBMISSION & VALIDATION =====
 
 /**
- * Processes chess game form submissions with validation and data persistence
+ * Processes chess match form submissions with validation and data persistence
  * @param {string[]} formData - Array: [whitePlayer, blackPlayer, winner, gameEnding, timeLimit, venue, brutality, notes, pictureData, whiteMulligan, blackMulligan]
  * @returns {Object} Success response with timestamp
  * @throws {Error} If validation fails or spreadsheet access fails
@@ -1076,7 +1320,7 @@ function addRow(formData) {
     
     const gameEnding = (formData[3] || '').toString().trim();
     if (!gameEnding) {
-      throw new Error('Game ending is required');
+      throw new Error('Match ending is required');
     }
     
     let venue = (formData[5] || '').toString().trim();
@@ -1084,10 +1328,10 @@ function addRow(formData) {
       throw new Error(`Venue must be less than ${VALIDATION_LIMITS.VENUE_MAX} characters`);
     }
     
-    // Time limit validation: required if game ending is "Time Out"
+    // Time limit validation: required if match ending is "Time Out"
     const timeLimit = (formData[4] || '').toString().trim();
     if (gameEnding === 'Time Out' && (!timeLimit || timeLimit.length === 0)) {
-      throw new Error('Time limit is required when game ends by Time Out');
+      throw new Error('Time limit is required when match ends by Time Out');
     }
     
     // Open or create the spreadsheet
@@ -1141,7 +1385,7 @@ function addRow(formData) {
           const blob = Utilities.newBlob(
             Utilities.base64Decode(base64Data),
             `image/${extension}`,
-            `chess-game-${new Date().toISOString().slice(0,10)}-${Date.now()}.${extension}`
+            `chess-match-${new Date().toISOString().slice(0,10)}-${Date.now()}.${extension}`
           );
           
           // Save to Google Drive
@@ -1228,7 +1472,7 @@ function addRow(formData) {
 
     const result_obj = {
       success: true,
-      message: 'Chess game logged successfully',
+      message: 'Chess match logged successfully',
       timestamp: new Date().toISOString()
     };
     
@@ -1247,7 +1491,7 @@ function addRow(formData) {
       
   } catch (error) {
     handleError('form_submission', error, false);
-    throw new Error('Failed to save chess game: ' + error.message);
+    throw new Error('Failed to save chess match: ' + error.message);
   }
 }
 
@@ -2206,7 +2450,7 @@ function computeCurrentSessionFromMatches(sheet, sessionId) {
  */
 function getOrCreateSpreadsheet() {
   const DEFAULT_SPREADSHEET_ID = 'your-default-spreadsheet-id-here'; // Replace with your spreadsheet ID if needed
-  const SPREADSHEET_NAME = 'Friend Chess Games';
+  const SPREADSHEET_NAME = 'Friend Chess Matches';
   
   try {
     logEvent('spreadsheet_access_attempt', {});

@@ -197,6 +197,71 @@ For each phase, verify:
 
 ---
 
+---
+
+# Technical Debt: "Game" → "Match" Terminology Rename
+
+## Background
+
+All **user-facing** strings were renamed from "game" to "match" in v2.6.3. The following internal references were intentionally left as-is to avoid breaking changes. They should be renamed in a coordinated effort.
+
+## Spreadsheet Column Header
+
+The `'Game Ending'` column header is used in the Matches sheet. Renaming requires a data migration since existing rows reference this column by name.
+
+**Occurrences (code.gs):**
+- Line 655: `matchHeaders.indexOf('Game Ending')` — reading match data
+- Line 894: `'Game Ending'` — Matches sheet header array
+- Line 1109: `'Game Ending'` — BackupMatches sheet header array
+
+**Migration steps:**
+1. Rename column header in sheet from `Game Ending` → `Match Ending`
+2. Update all three code.gs references
+3. Run `testAll()` to verify nothing breaks
+
+## Variable Names & Element IDs
+
+These are internal identifiers (not shown to users) that still use "game":
+
+### code.gs
+| Reference | Line | Type |
+|-----------|------|------|
+| `VALID_VALUES.GAME_ENDINGS` | ~50 | Constant key |
+| `gameEnding` local variable | 1077-1089, 1198, 1239 | Variable |
+| `game_ending` log property | 1239 | Log field name |
+
+### index.html
+| Reference | Lines | Type |
+|-----------|-------|------|
+| `id="gameEnding"` / `name="gameEnding"` | 1886 | HTML element ID & name |
+| `for="gameEnding"` | 1885 | Label `for` attribute |
+| `gameEnding` variable | 2441-2692 (~15 refs) | JS variable |
+| `totalGames` variable | 3048-3054 (~3 refs) | JS variable |
+
+### test-client.html
+| Reference | Lines | Type |
+|-----------|-------|------|
+| `getElementById('gameEnding')` | 125, 222 | Element lookup |
+| `'Game ending ...'` assertion strings | 125, 223 | Test messages |
+
+### test-suite.gs
+| Reference | Lines | Type |
+|-----------|-------|------|
+| `VALID_VALUES.GAME_ENDINGS` | 179-180 | Constant access |
+| `'Checkmate' // gameEnding` comment | 310 | Inline comment |
+
+## Recommended Approach
+
+1. **Column header first** — rename `Game Ending` → `Match Ending` in sheet + code.gs (requires data migration)
+2. **Constants** — rename `GAME_ENDINGS` → `MATCH_ENDINGS` in `VALID_VALUES`
+3. **Variables & IDs** — rename `gameEnding` → `matchEnding` across all files (bulk find-replace)
+4. **Tests** — update test assertions and variable names
+5. **Log fields** — rename `game_ending` → `match_ending` in logEvent calls
+
+**Effort:** Medium (mostly mechanical, but column header change needs migration script)
+
+---
+
 ## Notes
 
 - Phase 0 should be done immediately to avoid inconsistent state
