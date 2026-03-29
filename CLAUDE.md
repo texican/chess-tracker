@@ -585,7 +585,7 @@ cd chess-tracker
 - Requires a **clean git working tree** — fails with error if uncommitted changes exist
 - **Auto-syncs VERSION** from CHANGELOG.md → code.gs before pushing (amends the current commit if changed)
 - Embeds git commit hash in deployment description for traceability: `Deployment 2026-03-13 14:22:01 git:abc1234`
-- Cleans up old deployments, always keeping: (1) most recent, (2) pinned stable
+- Cleans up old deployments only when count exceeds 10, keeping: (1) most recent, (2) pinned stable, (3) latest patch version for each minor version (e.g., keeps 2.7.2, 2.6.5, 2.5.3)
 - Opens the new deployment URL in the browser automatically
 - Triggers beta redirect update via GitHub Action (if `.chess-redirect.conf` exists and `gh` CLI is available)
 

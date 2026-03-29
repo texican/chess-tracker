@@ -92,9 +92,10 @@ done <<< "$DEPLOYMENTS_FULL"
 
 # Count deployments
 DEPLOYMENT_COUNT=${#DEPLOYMENT_DATA[@]}
+MIN_DEPLOYMENTS_BEFORE_CLEANUP=10
 
-if [ "$DEPLOYMENT_COUNT" -gt 1 ]; then
-    echo "📊 Found $DEPLOYMENT_COUNT deployments"
+if [ "$DEPLOYMENT_COUNT" -gt "$MIN_DEPLOYMENTS_BEFORE_CLEANUP" ]; then
+    echo "📊 Found $DEPLOYMENT_COUNT deployments (>${MIN_DEPLOYMENTS_BEFORE_CLEANUP}, cleanup needed)"
 
     # Sort by epoch (newest first)
     IFS=$'\n' SORTED_DEPLOYMENTS=($(sort -t'|' -k1 -rn <<<"${DEPLOYMENT_DATA[*]}"))
@@ -157,17 +158,50 @@ if [ "$DEPLOYMENT_COUNT" -gt 1 ]; then
 
     if [ -n "$STABLE_ID" ]; then
         echo "🔒 Stable version: $STABLE_ID ($STABLE_TIME) [$STABLE_SOURCE]"
-    else
-        echo "📊 No stable version identified — only keeping most recent"
     fi
 
-    # Delete all deployments except most recent and stable
+    # Build list of deployment IDs to keep: latest patch version for each minor version
+    # Extract version from description: "Chess Tracker v2.7.0 - ..." → "2.7"
+    declare -A MINOR_VERSION_BEST  # minor_version -> "epoch|dep_id"
+    for deployment in "${SORTED_DEPLOYMENTS[@]}"; do
+        epoch=$(echo "$deployment" | cut -d'|' -f1)
+        dep_id=$(echo "$deployment" | cut -d'|' -f2)
+
+        # Find version in original deployment output
+        desc_line=$(echo "$DEPLOYMENTS_FULL" | grep "$dep_id" || true)
+        if [[ $desc_line =~ v([0-9]+\.[0-9]+)\.[0-9]+ ]]; then
+            minor_ver="${BASH_REMATCH[1]}"
+            # Keep the one with highest epoch (most recent) for this minor version
+            if [ -z "${MINOR_VERSION_BEST[$minor_ver]}" ]; then
+                MINOR_VERSION_BEST[$minor_ver]="$epoch|$dep_id"
+            else
+                existing_epoch=$(echo "${MINOR_VERSION_BEST[$minor_ver]}" | cut -d'|' -f1)
+                if [ "$epoch" -gt "$existing_epoch" ]; then
+                    MINOR_VERSION_BEST[$minor_ver]="$epoch|$dep_id"
+                fi
+            fi
+        fi
+    done
+
+    # Build set of IDs to keep
+    declare -A KEEP_IDS
+    KEEP_IDS[$MOST_RECENT_ID]=1
+    if [ -n "$STABLE_ID" ]; then
+        KEEP_IDS[$STABLE_ID]=1
+    fi
+    for minor_ver in "${!MINOR_VERSION_BEST[@]}"; do
+        best_id=$(echo "${MINOR_VERSION_BEST[$minor_ver]}" | cut -d'|' -f2)
+        KEEP_IDS[$best_id]=1
+        echo "🔹 Keeping v${minor_ver}.x: $best_id"
+    done
+
+    # Delete deployments not in keep set
     DELETED_COUNT=0
     for deployment in "${SORTED_DEPLOYMENTS[@]}"; do
         dep_id=$(echo "$deployment" | cut -d'|' -f2)
         timestamp=$(echo "$deployment" | cut -d'|' -f3)
 
-        if [ "$dep_id" != "$MOST_RECENT_ID" ] && [ "$dep_id" != "$STABLE_ID" ]; then
+        if [ -z "${KEEP_IDS[$dep_id]}" ]; then
             echo "🗑️  Deleting: $dep_id ($timestamp)"
             clasp undeploy "$dep_id" || echo "⚠️  Could not delete $dep_id"
             ((DELETED_COUNT++))
@@ -180,7 +214,7 @@ if [ "$DEPLOYMENT_COUNT" -gt 1 ]; then
         echo "📊 No old deployments to delete"
     fi
 else
-    echo "📊 Found $DEPLOYMENT_COUNT deployment(s), no cleanup needed"
+    echo "📊 Found $DEPLOYMENT_COUNT deployment(s), no cleanup needed (threshold: >${MIN_DEPLOYMENTS_BEFORE_CLEANUP})"
 fi
 
 echo "🔧 Creating new deployment..."

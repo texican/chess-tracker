@@ -5,6 +5,15 @@ All notable changes to the Chess Game Tracker project will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.1] - 2026-03-29
+
+### Changed - Deployment Cleanup
+- Cleanup only triggers when deployment count exceeds 10 (was: always cleanup if >1)
+- Keeps latest patch version for each minor version (e.g., 2.7.2, 2.6.5, 2.5.3)
+- Still always keeps: most recent deployment + pinned stable
+
+---
+
 ## [2.7.0] - 2026-03-29
 
 ### Added - Session & Match Editing
