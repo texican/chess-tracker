@@ -625,8 +625,15 @@ function adminGetSessionDetails(sessionId) {
       }
     }
 
+    logEvent('admin_session_details_returning', {
+      sessionIdStr: sessionIdStr,
+      metaFound: sessionMeta !== null,
+      matchCount: matches.length,
+      playerCount: playerStats.length
+    });
+
     return {
-      sessionId: sessionId,
+      sessionId: sessionIdStr,
       meta: sessionMeta,
       matches: matches,
       playerStats: playerStats
