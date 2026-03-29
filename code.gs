@@ -1,6 +1,6 @@
 /**
  * Google Apps Script Server Code - Chess Game Tracker
- * Version: 2.6.1
+ * Version: 2.6.2
  * Last Updated: 2026-03-29
  * 
  * Features:
@@ -13,7 +13,7 @@
  * - Beta deployment detection
  */
 
-const VERSION = '2.6.1';
+const VERSION = '2.6.2';
 const LAST_UPDATED = '2026-03-29';
 
 // ===== CONFIGURATION CONSTANTS =====
