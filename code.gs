@@ -1,6 +1,6 @@
 /**
  * Google Apps Script Server Code - Chess Match Tracker
- * Version: 2.6.2
+ * Version: 2.7.2
  * Last Updated: 2026-03-29
  * 
  * Features:
@@ -13,7 +13,7 @@
  * - Beta deployment detection
  */
 
-const VERSION = '2.6.2';
+const VERSION = '2.7.2';
 const LAST_UPDATED = '2026-03-29';
 
 // ===== CONFIGURATION CONSTANTS =====
@@ -167,7 +167,9 @@ function doGet(e) {
     var template = HtmlService.createTemplateFromFile('index');
     template.scriptUrl = ScriptApp.getService().getUrl();
     template.isBeta = isBetaDeployment();
-    var title = template.isBeta ? 'Chess Match Tracker (Beta)' : 'Chess Match Tracker';
+    var deploymentVersion = PropertiesService.getScriptProperties().getProperty('DEPLOYMENT_VERSION') || VERSION;
+    template.version = deploymentVersion;
+    var title = template.isBeta ? 'Chess Tracker (Beta v' + deploymentVersion + ')' : 'Chess Tracker';
     return template.evaluate()
       .setTitle(title)
       .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -207,7 +209,9 @@ function serveAdminPanel(e) {
   var template = HtmlService.createTemplateFromFile('admin-panel');
   template.scriptUrl = ScriptApp.getService().getUrl();
   template.isBeta = isBetaDeployment();
-  var title = template.isBeta ? 'Admin Panel - Chess Tracker (Beta)' : 'Admin Panel - Chess Tracker';
+  var deploymentVersion = PropertiesService.getScriptProperties().getProperty('DEPLOYMENT_VERSION') || VERSION;
+  template.version = deploymentVersion;
+  var title = template.isBeta ? 'Admin Panel - Chess Tracker (Beta v' + deploymentVersion + ')' : 'Admin Panel - Chess Tracker';
   return template.evaluate()
     .setTitle(title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1');
@@ -464,6 +468,33 @@ function adminSetStableVersion(version) {
   });
 
   return { success: true, message: 'Stable version set to ' + versionStr };
+}
+
+/**
+ * Admin API: Set the current deployment version number
+ * Called by deploy.sh after each deployment to track the @version number
+ * Owner-only access
+ * @param {string} version - Deployment version number (e.g. "157")
+ * @returns {Object} Success response
+ */
+function adminSetDeploymentVersion(version) {
+  if (!isScriptOwner()) {
+    throw new Error('Unauthorized: Admin access restricted to script owner');
+  }
+
+  var versionStr = (version || '').toString().trim();
+  if (versionStr.length === 0) {
+    throw new Error('Version cannot be empty');
+  }
+
+  PropertiesService.getScriptProperties().setProperty('DEPLOYMENT_VERSION', versionStr);
+
+  logEvent('admin_set_deployment_version', {
+    version: versionStr,
+    user: Session.getEffectiveUser().getEmail()
+  });
+
+  return { success: true, message: 'Deployment version set to ' + versionStr };
 }
 
 /**

@@ -1051,7 +1051,7 @@
 <body>
   <!-- Header -->
   <div class="admin-header">
-    <h1>🛡️ Chess Tracker Admin Panel<? if (isBeta) { ?> <span class="beta-tag">Beta</span><? } ?></h1>
+    <h1>🛡️ Chess Tracker Admin<? if (isBeta) { ?> <span class="beta-tag">Beta v<?= version ?></span><? } ?></h1>
     <div class="admin-header-right">
       <span id="admin-user">👤 Loading...</span>
       <span>|</span>
@@ -1167,7 +1167,6 @@
                 <th>Time</th>
                 <th>Matches</th>
                 <th>Results</th>
-                <th>Avg Brutality</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1799,7 +1798,6 @@
           '<td class="session-date-cell">' + timeStr + '</td>' +
           '<td class="session-matches-cell">' + session.matches + '</td>' +
           '<td>' + renderColorBar(session.whiteWins, session.blackWins, session.draws, whitePct, blackPct, drawPct) + '</td>' +
-          '<td>' + (session.avgBrutality ? session.avgBrutality.toFixed(1) : '-') + '</td>' +
           '<td></td>';
 
         // Append the button to the last cell
@@ -1924,8 +1922,7 @@
         '<div class="session-stat-card"><div class="session-stat-value">' + (meta.matchCount || 0) + '</div><div class="session-stat-label">Matches</div></div>' +
         '<div class="session-stat-card"><div class="session-stat-value">' + (meta.whiteWins || 0) + '</div><div class="session-stat-label">White Wins</div></div>' +
         '<div class="session-stat-card"><div class="session-stat-value">' + (meta.blackWins || 0) + '</div><div class="session-stat-label">Black Wins</div></div>' +
-        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.draws || 0) + '</div><div class="session-stat-label">Draws</div></div>' +
-        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.avgBrutality ? meta.avgBrutality.toFixed(1) : '-') + '</div><div class="session-stat-label">Avg Brutality</div></div>';
+        '<div class="session-stat-card"><div class="session-stat-value">' + (meta.draws || 0) + '</div><div class="session-stat-label">Draws</div></div>';
 
       document.getElementById('session-stats-grid').innerHTML = statsHtml;
 

@@ -233,6 +233,18 @@ fi
 echo "✅ Deployment successful!"
 echo "📋 Deployment ID: $DEPLOYMENT_ID"
 
+# Extract deployment version number (@157) from clasp deployments
+DEPLOY_VERSION=$(clasp deployments 2>/dev/null | grep "$DEPLOYMENT_ID" | grep -oE '@[0-9]+' | tr -d '@')
+if [ -n "$DEPLOY_VERSION" ]; then
+    echo "📋 Deployment version: @$DEPLOY_VERSION"
+    # Set deployment version in Script Properties for beta tag display
+    clasp run adminSetDeploymentVersion --params "[\"$DEPLOY_VERSION\"]" 2>/dev/null \
+        && echo "✅ DEPLOYMENT_VERSION set to $DEPLOY_VERSION" \
+        || echo "⚠️  Could not set DEPLOYMENT_VERSION — beta tag may show semantic version"
+else
+    echo "⚠️  Could not extract deployment version number"
+fi
+
 # Construct web app URL
 WEB_APP_URL="https://script.google.com/macros/s/$DEPLOYMENT_ID/exec"
 echo "🌐 Web App URL: $WEB_APP_URL"
