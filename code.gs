@@ -487,18 +487,7 @@ function adminGetSessions(page, pageSize) {
       var row = data[i];
       var startTime = row[colStartTime];
       var endTime = row[colEndTime];
-      var rawSessionId = row[colSessionId];
-      var sessionIdStr = String(rawSessionId || '').trim();
-
-      // Log first few sessions for debugging
-      if (sessions.length < 3) {
-        logEvent('admin_get_sessions_row', {
-          rowIndex: i,
-          rawSessionId: rawSessionId,
-          sessionIdStr: sessionIdStr,
-          rawType: typeof rawSessionId
-        });
-      }
+      var sessionIdStr = String(row[colSessionId] || '').trim();
 
       sessions.push({
         sessionId: sessionIdStr,
@@ -558,31 +547,21 @@ function adminGetSessionDetails(sessionId) {
     // Get session metadata
     var sessionMeta = null;
     var sessionIdStr = String(sessionId).trim();
-    logEvent('admin_session_details_lookup', { sessionIdStr: sessionIdStr });
 
     if (sessionsSheet && sessionsSheet.getLastRow() > 1) {
       var sessionsData = sessionsSheet.getDataRange().getValues();
       var sessionsHeaders = sessionsData[0];
       var sidCol = sessionsHeaders.indexOf('Session ID');
 
-      // Log available session IDs for debugging (show last 5, which are most recent)
-      var availableIds = [];
-      var totalRows = sessionsData.length;
-      for (var d = Math.max(1, totalRows - 5); d < totalRows; d++) {
-        availableIds.push({ row: d, id: String(sessionsData[d][sidCol]).trim() });
-      }
-      logEvent('admin_session_ids_in_sheet', {
-        totalRows: totalRows,
-        last5: availableIds,
-        looking_for: sessionIdStr
-      });
-
       for (var i = 1; i < sessionsData.length; i++) {
-        if (String(sessionsData[i][sidCol]).trim() === sessionIdStr) {
+        var sheetId = String(sessionsData[i][sidCol]).trim();
+        if (sheetId === sessionIdStr) {
+          var rawStartTime = sessionsData[i][sessionsHeaders.indexOf('Start Time')];
+          var rawEndTime = sessionsData[i][sessionsHeaders.indexOf('End Time')];
           sessionMeta = {
             venue: sessionsData[i][sessionsHeaders.indexOf('Venue')] || '',
-            startTime: sessionsData[i][sessionsHeaders.indexOf('Start Time')],
-            endTime: sessionsData[i][sessionsHeaders.indexOf('End Time')],
+            startTime: rawStartTime ? new Date(rawStartTime).toISOString() : null,
+            endTime: rawEndTime ? new Date(rawEndTime).toISOString() : null,
             matchCount: parseInt(sessionsData[i][sessionsHeaders.indexOf('Matches')], 10) || 0,
             whiteWins: parseInt(sessionsData[i][sessionsHeaders.indexOf('White Wins')], 10) || 0,
             blackWins: parseInt(sessionsData[i][sessionsHeaders.indexOf('Black Wins')], 10) || 0,
