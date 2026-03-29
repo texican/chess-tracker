@@ -625,19 +625,25 @@ function adminGetSessionDetails(sessionId) {
       }
     }
 
-    logEvent('admin_session_details_returning', {
-      sessionIdStr: sessionIdStr,
-      metaFound: sessionMeta !== null,
-      matchCount: matches.length,
-      playerCount: playerStats.length
-    });
-
-    return {
+    var result = {
       sessionId: sessionIdStr,
       meta: sessionMeta,
       matches: matches,
       playerStats: playerStats
     };
+
+    // Force JSON serialization to catch any non-serializable values
+    var jsonString = JSON.stringify(result);
+
+    logEvent('admin_session_details_returning', {
+      sessionIdStr: sessionIdStr,
+      metaFound: sessionMeta !== null,
+      matchCount: matches.length,
+      playerCount: playerStats.length,
+      jsonLength: jsonString.length
+    });
+
+    return JSON.parse(jsonString);
 
   } catch (error) {
     logEvent('admin_get_session_details_error', { sessionId: sessionId, error: error.toString() });
