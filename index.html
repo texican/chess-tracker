@@ -115,19 +115,17 @@
     }
 
     .beta-tag {
-      display: inline-block;
+      display: inline;
       background: linear-gradient(135deg, #f59e0b, #d97706);
       color: #000;
-      font-size: 0.4em;
+      font-size: 0.25em;
       font-weight: 800;
-      padding: 2px 8px;
-      border-radius: 4px;
-      vertical-align: middle;
+      padding: 2px 6px;
+      border-radius: 3px;
+      vertical-align: super;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      margin-left: 8px;
-      position: relative;
-      top: -2px;
+      margin-left: 4px;
     }
 
     .single-column .subtitle {
@@ -1759,7 +1757,7 @@
 <body>
   <div class="form-container">
     <div style="display: flex; justify-content: space-between; align-items: center;">
-      <h1 onclick="toggleSingleColumn()" style="flex: 1;">♟️ Chess Tracker 2026<? if (isBeta) { ?><span class="beta-tag">Beta</span><? } ?></h1>
+      <h1 onclick="toggleSingleColumn()" style="flex: 1;">♟️ Chess Tracker 2026<? if (isBeta) { ?> <span class="beta-tag">BETA</span><? } ?></h1>
       <a href="<?= scriptUrl ?>?admin=true" target="_top" title="Admin Panel" style="color: #666; text-decoration: none; font-size: 1.2rem; padding: 8px;">⚙️</a>
     </div>
     <p class="subtitle">New and improved with live session tracking</p>
