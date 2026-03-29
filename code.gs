@@ -447,24 +447,31 @@ function adminSetStableVersion(version) {
  * Owner-only access
  * @param {number} page - Page number (1-indexed)
  * @param {number} pageSize - Items per page (default 20)
- * @returns {Object} Sessions data with pagination info
+ * @returns {Object} { success: boolean, data?: Object, error?: string }
  */
 function adminGetSessions(page, pageSize) {
   if (!isScriptOwner()) {
-    throw new Error('Unauthorized: Admin access restricted to script owner');
+    return { success: false, error: 'Unauthorized: Admin access restricted to script owner' };
   }
 
-  page = parseInt(page, 10) || 1;
-  pageSize = parseInt(pageSize, 10) || 20;
-  if (page < 1) page = 1;
-  if (pageSize < 1 || pageSize > 100) pageSize = 20;
-
   try {
+    page = parseInt(page, 10) || 1;
+    pageSize = parseInt(pageSize, 10) || 20;
+    if (page < 1) page = 1;
+    if (pageSize < 1 || pageSize > 100) pageSize = 20;
+
     var spreadsheet = getOrCreateSpreadsheet();
     var sessionsSheet = spreadsheet.getSheetByName('Sessions');
 
     if (!sessionsSheet || sessionsSheet.getLastRow() <= 1) {
-      return { sessions: [], total: 0, page: 1, pageSize: pageSize, totalPages: 0 };
+      return {
+        success: true,
+        sessions: [],
+        total: 0,
+        page: 1,
+        pageSize: pageSize,
+        totalPages: 0
+      };
     }
 
     var data = sessionsSheet.getDataRange().getValues();
@@ -509,17 +516,19 @@ function adminGetSessions(page, pageSize) {
     var end = Math.min(start + pageSize, total);
     var paginatedSessions = sessions.slice(start, end);
 
-    return {
+    // JSON round-trip ensures serialization safety
+    return JSON.parse(JSON.stringify({
+      success: true,
       sessions: paginatedSessions,
       total: total,
       page: page,
       pageSize: pageSize,
       totalPages: totalPages
-    };
+    }));
 
   } catch (error) {
     logEvent('admin_get_sessions_error', { error: error.toString() });
-    throw error;
+    return { success: false, error: error.message || error.toString() };
   }
 }
 
@@ -527,15 +536,15 @@ function adminGetSessions(page, pageSize) {
  * Admin API: Get detailed session data including matches and player stats
  * Owner-only access
  * @param {string} sessionId - Session ID to retrieve
- * @returns {Object} Detailed session data with matches and player stats
+ * @returns {Object} { success: boolean, data?: Object, error?: string }
  */
 function adminGetSessionDetails(sessionId) {
   if (!isScriptOwner()) {
-    throw new Error('Unauthorized: Admin access restricted to script owner');
+    return { success: false, error: 'Unauthorized: Admin access restricted to script owner' };
   }
 
   if (!sessionId) {
-    throw new Error('Session ID is required');
+    return { success: false, error: 'Session ID is required' };
   }
 
   try {
@@ -625,29 +634,18 @@ function adminGetSessionDetails(sessionId) {
       }
     }
 
-    var result = {
+    // JSON round-trip ensures all data is serializable for google.script.run
+    return JSON.parse(JSON.stringify({
+      success: true,
       sessionId: sessionIdStr,
       meta: sessionMeta,
       matches: matches,
       playerStats: playerStats
-    };
-
-    // Force JSON serialization to catch any non-serializable values
-    var jsonString = JSON.stringify(result);
-
-    logEvent('admin_session_details_returning', {
-      sessionIdStr: sessionIdStr,
-      metaFound: sessionMeta !== null,
-      matchCount: matches.length,
-      playerCount: playerStats.length,
-      jsonLength: jsonString.length
-    });
-
-    return JSON.parse(jsonString);
+    }));
 
   } catch (error) {
     logEvent('admin_get_session_details_error', { sessionId: sessionId, error: error.toString() });
-    throw error;
+    return { success: false, error: error.message || error.toString() };
   }
 }
 
@@ -655,11 +653,11 @@ function adminGetSessionDetails(sessionId) {
  * Admin API: Recompute session statistics
  * Owner-only access
  * @param {string} sessionId - Session ID to recompute, or 'all' for all sessions
- * @returns {Object} Success response with count of recomputed sessions
+ * @returns {Object} { success: boolean, data?: Object, error?: string }
  */
 function adminRecomputeSession(sessionId) {
   if (!isScriptOwner()) {
-    throw new Error('Unauthorized: Admin access restricted to script owner');
+    return { success: false, error: 'Unauthorized: Admin access restricted to script owner' };
   }
 
   try {
@@ -711,7 +709,7 @@ function adminRecomputeSession(sessionId) {
     } else {
       // Recompute single session
       if (!sessionId) {
-        throw new Error('Session ID is required');
+        return { success: false, error: 'Session ID is required' };
       }
 
       recomputeSessionStats(sessionId);
@@ -726,7 +724,7 @@ function adminRecomputeSession(sessionId) {
 
   } catch (error) {
     logEvent('admin_recompute_error', { sessionId: sessionId, error: error.toString() });
-    throw error;
+    return { success: false, error: error.message || error.toString() };
   }
 }
 
@@ -735,15 +733,15 @@ function adminRecomputeSession(sessionId) {
  * Owner-only access
  * @param {string} sessionId - Session ID to delete
  * @param {boolean} deleteMatches - If true, also delete all matches in the session
- * @returns {Object} Success response
+ * @returns {Object} { success: boolean, data?: Object, error?: string }
  */
 function adminDeleteSession(sessionId, deleteMatches) {
   if (!isScriptOwner()) {
-    throw new Error('Unauthorized: Admin access restricted to script owner');
+    return { success: false, error: 'Unauthorized: Admin access restricted to script owner' };
   }
 
   if (!sessionId) {
-    throw new Error('Session ID is required');
+    return { success: false, error: 'Session ID is required' };
   }
 
   try {
@@ -811,7 +809,7 @@ function adminDeleteSession(sessionId, deleteMatches) {
 
   } catch (error) {
     logEvent('admin_delete_session_error', { sessionId: sessionId, error: error.toString() });
-    throw error;
+    return { success: false, error: error.message || error.toString() };
   }
 }
 

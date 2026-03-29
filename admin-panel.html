@@ -1558,6 +1558,11 @@
         .withSuccessHandler(function(result) {
           document.getElementById('sessions-loading').style.display = 'none';
 
+          if (!result || !result.success) {
+            showSessionsAlert('Error loading sessions: ' + (result ? result.error : 'No response'), 'error');
+            return;
+          }
+
           sessionsState.sessions = result.sessions;
           sessionsState.total = result.total;
           sessionsState.currentPage = result.page;
@@ -1698,10 +1703,11 @@
       google.script.run
         .withSuccessHandler(function(result) {
           console.log('Session details loaded:', result);
-          if (!result) {
+          if (!result || !result.success) {
             document.getElementById('modal-title').textContent = 'Error';
             document.getElementById('session-stats-grid').innerHTML =
-              '<div style="text-align: center; color: #ef4444; padding: 20px;">Server returned no data. Try clicking "Recompute Stats" below.</div>';
+              '<div style="text-align: center; color: #ef4444; padding: 20px;">' +
+              (result && result.error ? result.error : 'Server returned no data. Try clicking "Recompute Stats" below.') + '</div>';
             return;
           }
           renderSessionDetails(result);
@@ -1834,6 +1840,10 @@
         .withSuccessHandler(function(result) {
           btn.disabled = false;
           btn.textContent = '♻️ Recompute Stats';
+          if (!result || !result.success) {
+            showSessionsAlert('Error: ' + (result ? result.error : 'No response'), 'error');
+            return;
+          }
           showSessionsAlert(result.message, 'success');
           openSessionDetails(sessionsState.currentSessionId); // Refresh modal
           loadSessions(); // Refresh list
@@ -1855,6 +1865,10 @@
 
       google.script.run
         .withSuccessHandler(function(result) {
+          if (!result || !result.success) {
+            showSessionsAlert('Error: ' + (result ? result.error : 'No response'), 'error');
+            return;
+          }
           showSessionsAlert(result.message, 'success');
           loadSessions();
         })
@@ -1888,6 +1902,10 @@
         .withSuccessHandler(function(result) {
           btn.disabled = false;
           btn.textContent = '🗑️ Delete Session';
+          if (!result || !result.success) {
+            showSessionsAlert('Error: ' + (result ? result.error : 'No response'), 'error');
+            return;
+          }
           closeSessionModal();
           showSessionsAlert(result.message, 'success');
           loadSessions();

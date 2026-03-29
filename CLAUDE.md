@@ -28,11 +28,75 @@ This is a Google Apps Script chess game tracker that allows users to log their c
 
 **❌ PATTERNS AVOIDED (CAUSE FAILURES IN GAS):**
 - Modern fetch() API (unreliable in GAS sandbox)
-- Complex addEventListener patterns (fail in GAS environment)  
+- Complex addEventListener patterns (fail in GAS environment)
 - ES6 modules and imports (not supported in GAS HTML Service)
 - Arrow functions and modern JavaScript features
 - External API calls and CORS requests
 - Modern JavaScript frameworks (React, Vue, etc.)
+
+## google.script.run API Best Practices
+
+Functions callable via `google.script.run` must follow specific patterns to ensure reliable client-server communication. See [TECH_DEBT.md](TECH_DEBT.md) for migration status.
+
+### Server-Side Pattern (code.gs)
+
+```javascript
+function apiFunction(params) {
+  // Authorization check - return error, never throw
+  if (requiresAuth && !isScriptOwner()) {
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // Validation - return error, never throw
+  if (!params.required) {
+    return { success: false, error: 'Required param missing' };
+  }
+
+  try {
+    var result = doWork(params);
+
+    // Success: flat structure with success flag
+    // JSON serialize complex objects (dates, nested data)
+    return JSON.parse(JSON.stringify({
+      success: true,
+      items: result.items,
+      count: result.count
+    }));
+
+  } catch (error) {
+    logEvent('api_function_error', { error: error.toString() });
+    return { success: false, error: error.message || error.toString() };
+  }
+}
+```
+
+### Client-Side Pattern (HTML files)
+
+```javascript
+google.script.run
+  .withSuccessHandler(function(result) {
+    if (!result || !result.success) {
+      showError(result ? result.error : 'No response from server');
+      return;
+    }
+    // Access payload directly: result.items, result.count
+    processData(result);
+  })
+  .withFailureHandler(function(error) {
+    showError('Server error: ' + (error.message || error));
+  })
+  .apiFunction(params);
+```
+
+### Key Rules
+
+1. **Never throw** - thrown errors can cause `google.script.run` to return `null`
+2. **Always include `success` boolean** - client reliably checks success/failure
+3. **Flat response structure** - `{ success: true, ...payload }` not nested in `data`
+4. **JSON serialize complex objects** - `JSON.parse(JSON.stringify(result))` for dates
+5. **Authorization returns error** - `return { success: false, error }` not `throw`
+6. **Log errors server-side** - `logEvent()` before returning error response
+7. **Client checks `result.success` first** - before accessing any payload fields
 
 ## Responsive Design with clamp()
 
@@ -587,7 +651,7 @@ doGet(e) checks e.parameter.admin === 'true'
 
 ### Admin API Functions
 
-All functions check `isScriptOwner()` first, throw error if unauthorized.
+All functions check `isScriptOwner()` first and return error response if unauthorized.
 
 **adminGetConfig():**
 - Returns configuration object with players, playerColors, playerEmojis, venues, mulliganVenues, sessionGapHours
@@ -613,13 +677,13 @@ All functions check `isScriptOwner()` first, throw error if unauthorized.
 **adminGetSessions(page, pageSize):**
 - Returns paginated list of sessions (newest first)
 - Parameters: page (1-indexed), pageSize (default 20, max 100)
-- Returns: `{ sessions: [...], total, page, pageSize, totalPages }`
+- Returns: `{ success, sessions, total, page, pageSize, totalPages }` (flat structure)
 - Each session includes: sessionId, venue, startTime, endTime, matches, whiteWins, blackWins, draws, avgBrutality
 
 **adminGetSessionDetails(sessionId):**
 - Returns detailed session data including matches and player stats
 - Parameters: sessionId (required)
-- Returns: `{ sessionId, meta: {...}, matches: [...], playerStats: [...] }`
+- Returns: `{ success, sessionId, meta, matches, playerStats }` (flat structure)
 - Matches include: rowIndex, timestamp, whitePlayer, blackPlayer, winner, gameEnding, timeLimit, brutality, notes, pictureUrl
 - Player stats include: player, matches, wins, winsAsWhite, winsAsBlack, losses, lossesAsWhite, lossesAsBlack, draws, inflicted, suffered
 
@@ -627,12 +691,12 @@ All functions check `isScriptOwner()` first, throw error if unauthorized.
 - Recomputes session statistics from source matches
 - Parameters: sessionId or 'all' for all sessions
 - Calls `recomputeSessionStats()` for each session
-- Returns: `{ success: true, message, count?, errors? }`
+- Returns: `{ success, message, count?, errors? }` (flat structure)
 
 **adminDeleteSession(sessionId, deleteMatches):**
 - Deletes session from Sessions and SessionPlayers sheets
 - Parameters: sessionId (required), deleteMatches (boolean - if true, also deletes matches from Matches sheet)
-- Returns: `{ success: true, message, deletedMatches }`
+- Returns: `{ success, message, deletedMatches }` (flat structure)
 
 ### Session Management Tab (Implemented)
 
